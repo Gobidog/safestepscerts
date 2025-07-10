@@ -1,0 +1,17 @@
+first_name,last_name,course,notes
+,Smith,Python Programming,Missing first name
+John,,Data Analysis,Missing last name
+Mary-Jane,O'Brien,Web Development,Special characters in names
+Jean-Claude,van Damme,Machine Learning,Multi-part names
+A,B,Short Course,Single letter names
+VeryLongFirstNameThatMightCauseIssues,VeryLongLastNameThatMightCauseIssues,Long Course Name That Might Also Cause Display Issues,Long names
+Robert'; DROP TABLE students;--,Smith,SQL Injection Test,Security test
+"John
+Newline",Smith	Tab,"SpecialCharacters",Control characters
+  John  ,  Smith  ,  Python  ,Leading/trailing spaces
+JOHN,SMITH,PYTHON PROGRAMMING,All uppercase
+john,smith,python programming,All lowercase
+José María,de la Cruz,Advanced Programming,Complex Spanish name
+Anna-Lena,Müller-Schmidt,Database Design,German compound name
+NULL,null,None,Special values
+0,1,2,Numeric names

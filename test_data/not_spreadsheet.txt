@@ -1,0 +1,2 @@
+This is not a spreadsheet file
+It should be rejected by the validator

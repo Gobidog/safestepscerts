@@ -1,0 +1,42 @@
+# Certificate Generator Requirements
+# Python 3.11+ required
+
+# Core Framework
+streamlit==1.31.0
+
+# PDF Processing
+PyMuPDF==1.23.8
+fitz==0.0.1.dev2  # PyMuPDF dependency
+
+# Data Processing
+pandas==2.0.3
+openpyxl==3.1.2  # Excel file support
+xlrd==2.0.1  # Legacy Excel support
+
+# Cloud Storage
+google-cloud-storage==2.10.0
+google-auth==2.25.2
+google-auth-oauthlib==1.2.0
+
+# Environment & Configuration
+python-dotenv==1.0.0
+
+# Logging & Monitoring
+structlog==24.1.0
+
+# Utilities
+Pillow==10.2.0  # Image processing
+requests==2.31.0  # HTTP requests
+pytz==2023.3  # Timezone handling
+
+# Development & Testing (optional but recommended)
+pytest==7.4.4
+pytest-cov==4.1.0
+black==23.12.1  # Code formatting
+flake8==7.0.0  # Linting
+mypy==1.8.0  # Type checking
+
+# Security
+cryptography==41.0.7  # For secure operations
+bcrypt==4.1.2  # For password hashing
+python-jose==3.3.0  # For JWT tokens (CSRF protection)

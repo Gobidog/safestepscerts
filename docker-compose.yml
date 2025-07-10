@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  cert-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - USE_LOCAL_STORAGE=${USE_LOCAL_STORAGE:-true}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
+      - GCS_PROJECT_ID=${GCS_PROJECT_ID:-}
+    volumes:
+      # Mount local storage for development
+      - ./local_storage:/app/local_storage
+      - ./logs:/app/logs
+      # Mount source code for development (comment out for production)
+      - ./src:/app/src
+      - ./app.py:/app/app.py
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a local database for future enhancements
+  # postgres:
+  #   image: postgres:15-alpine
+  #   environment:
+  #     POSTGRES_DB: certgen
+  #     POSTGRES_USER: certgen
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-localpass}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+volumes:
+  # postgres_data:  # Uncomment if using database

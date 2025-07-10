@@ -10,14 +10,18 @@ A Streamlit-based certificate generator application with dual authentication (us
 - Preview certificates before bulk generation
 - Download certificates as ZIP file
 - Real-time progress tracking
+- Session management with automatic timeout
 
 ### Admin Features
 - All user features
 - Upload and manage PDF templates
 - Map templates to course names
 - Change user/admin passwords
-- View usage logs
+- View usage statistics and activity logs
 - Test templates with dummy data
+- Delete templates
+- Monitor system performance
+- Export configuration settings
 
 ## Technology Stack
 
@@ -77,7 +81,7 @@ certificate-generator/
 │   ├── auth.py              # Password management
 │   ├── pdf_generator.py     # Certificate creation
 │   ├── validators.py        # Input validation
-│   └── storage.py           # GCS integration
+│   └── storage.py           # GCS integration with local fallback
 ├── templates/               # Local template cache
 ├── temp/                    # Working directory
 ├── config.py               # App configuration
@@ -88,15 +92,22 @@ certificate-generator/
 
 ## Authentication
 
-The app uses two-level password authentication:
+The app uses two-level password authentication with bcrypt hashing:
 - **User Access**: Basic certificate generation features
 - **Admin Access**: Full features including template management
 
-Default passwords (change these!):
-```python
-USER_PASSWORD=UserPass123
-ADMIN_PASSWORD=AdminPass456
+## Security Requirements
+
+⚠️ **IMPORTANT**: Passwords MUST be set via environment variables:
+```bash
+USER_PASSWORD=your_secure_user_password
+ADMIN_PASSWORD=your_secure_admin_password
 ```
+
+The application will NOT start without these environment variables set. Passwords are hashed using bcrypt for security.
+
+### CSRF Protection
+Forms are protected with CSRF tokens when `ENABLE_CSRF_PROTECTION=true` (default)
 
 ## PDF Template Requirements
 
@@ -105,6 +116,7 @@ Templates must be PDF files with form fields (not placeholders):
 - Optional: Define bounding boxes for text areas
 - Maximum file size: 10MB
 - Fields will auto-size text to fit
+- Form fields are flattened during generation to remove blue backgrounds
 
 ## Deployment to Google Cloud Run
 
@@ -138,14 +150,26 @@ gcloud run deploy cert-generator \
 
 - **Max upload size**: 5MB
 - **Max rows per batch**: 500
-- **Processing time**: ~0.5 sec/certificate
+- **Processing time**: ~0.5 sec/certificate (sequential), ~0.1 sec/certificate (parallel)
+- **Parallel processing**: Up to 8 concurrent PDF generations
 - **Request timeout**: 5 minutes
 - **Concurrent users**: 10
 - **Rate limit**: 40 requests/minute
 
+## Storage Configuration
+
+The app supports both Google Cloud Storage and local file storage:
+
+- **Production**: Uses Google Cloud Storage for templates and logs
+- **Development**: Falls back to local storage in `./local_storage`
+- **Automatic cleanup**: Removes temporary files older than 2 hours
+- **Template caching**: Downloaded templates cached for 5 minutes
+
+Set `USE_LOCAL_STORAGE=true` in `.env` to force local storage mode.
+
 ## Security Features
 
-- Session-based authentication
+- Session-based authentication with 30-minute timeout
 - File type validation (CSV/XLSX only)
 - Filename sanitization
 - Automatic temp file cleanup (1 hour)

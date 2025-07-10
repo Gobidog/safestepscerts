@@ -1,0 +1,11 @@
+first_name,last_name,course,date,score
+John,Smith,Python,2025-01-01,95
+,Doe,Data Analysis,2025-01-02,88
+Michael,,Web Development,,92
+,,Machine Learning,2025-01-04,
+Emma,Davis,,2025-01-05,90
+Robert,Miller,Database,,
+,Wilson,,,85
+James,,,2025-01-08,
+Mary,Taylor,Python,,91
+,,,,

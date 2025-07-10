@@ -1,0 +1,11 @@
+course_name,template_file,description
+Python Programming,basic_certificate.pdf,Basic certificate for Python courses
+Data Analysis,professional_certificate.pdf,Professional certificate with logo
+Web Development,workshop_certificate.pdf,Modern workshop-style certificate
+Machine Learning,professional_certificate.pdf,Professional certificate with logo
+International Business Communication,multilingual_certificate.pdf,Multi-language certificate
+Excel Basics,basic_certificate.pdf,Basic certificate for Excel courses
+Advanced Excel,professional_certificate.pdf,Professional certificate with logo
+Design Thinking Workshop,workshop_certificate.pdf,Workshop certificate
+Cloud Computing,professional_certificate.pdf,Professional certificate with logo
+DEFAULT,basic_certificate.pdf,Default template for unmapped courses
