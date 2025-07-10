@@ -1136,11 +1136,19 @@ def get_app_info():
 
 def show_template_management():
     """Template management interface"""
-    from utils.storage import list_templates, save_template, delete_template, get_template
+    from utils.storage import list_templates, save_template, delete_template, get_template, get_template_path
     import tempfile
     import fitz  # PyMuPDF
     
     st.title("Template Management")
+    
+    # Warning about persistence on Streamlit Cloud
+    if config.storage.use_local_storage:
+        st.warning("""
+        ⚠️ **Important**: Templates are stored locally on this server. 
+        On Streamlit Community Cloud, templates will be lost when the app restarts.
+        For production use, configure Google Cloud Storage or download templates for backup.
+        """)
     
     # Three column layout
     col1, col2, col3 = st.columns([1, 2, 1])

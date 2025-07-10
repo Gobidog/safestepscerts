@@ -135,6 +135,8 @@ Templates must be PDF files with form fields (not placeholders):
    ```
 6. Deploy! Your app will be available at `https://your-app.streamlit.app`
 
+**⚠️ Important Note**: Templates uploaded via the admin panel will not persist on Streamlit Cloud. Upload the sample templates from `sample_templates/` directory after each restart, or configure Google Cloud Storage for persistence.
+
 ### Option 2: Render.com (FREE tier)
 
 1. Push code to GitHub
