@@ -118,7 +118,37 @@ Templates must be PDF files with form fields (not placeholders):
 - Fields will auto-size text to fit
 - Form fields are flattened during generation to remove blue backgrounds
 
-## Deployment to Google Cloud Run
+## Deployment Options
+
+### Option 1: Streamlit Community Cloud (FREE - Recommended)
+
+1. Fork this repository or use your own: https://github.com/Gobidog/safestepscerts
+2. Go to [share.streamlit.io](https://share.streamlit.io)
+3. Click "New app" and select your repository
+4. Set the following in the "Advanced settings":
+   - Main file path: `app.py`
+   - Python version: 3.11
+5. Add these secrets in the Streamlit Cloud dashboard:
+   ```toml
+   USER_PASSWORD = "your_user_password"
+   ADMIN_PASSWORD = "your_admin_password"
+   ```
+6. Deploy! Your app will be available at `https://your-app.streamlit.app`
+
+### Option 2: Render.com (FREE tier)
+
+1. Push code to GitHub
+2. Create account at [render.com](https://render.com)
+3. New > Web Service > Connect your GitHub repo
+4. Use these settings:
+   - Environment: Docker
+   - Instance Type: Free
+5. Add environment variables:
+   - `USER_PASSWORD`
+   - `ADMIN_PASSWORD`
+6. Deploy!
+
+### Option 3: Google Cloud Run
 
 1. Set up Google Cloud project:
 ```bash

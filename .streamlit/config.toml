@@ -1,0 +1,42 @@
+# Streamlit Configuration for SafeSteps Certificate Generator
+
+[theme]
+# Brand colors
+primaryColor = "#9ACA3C"  # Lime green accent
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F8F9FA"
+textColor = "#212529"
+
+# Font
+font = "sans serif"  # Will use Inter from CSS
+
+[server]
+# Port configuration (Streamlit Cloud will override)
+port = 8501
+
+# Enable CORS for production
+enableCORS = true
+enableXsrfProtection = true
+
+# File upload settings
+maxUploadSize = 5  # 5MB max file size
+
+[browser]
+# App info
+gatherUsageStats = false
+serverAddress = "0.0.0.0"
+
+[runner]
+# Magic commands disabled for production
+magicEnabled = false
+
+[client]
+# Show errors in production (set to false for production)
+showErrorDetails = false
+
+# Disable the warning about running directly with streamlit run
+showWarningOnDirectExecution = false
+
+[logger]
+# Logging level
+level = "info"
