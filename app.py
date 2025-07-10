@@ -1230,7 +1230,37 @@ def show_template_management():
         # Test template
         if 'selected_template_admin' in st.session_state:
             if st.button("🧪 Test Template", use_container_width=True):
-                st.info("Test generation would happen here")
+                template = st.session_state.selected_template_admin
+                template_path = get_template_path(template.get('filename'))
+                
+                if template_path and os.path.exists(template_path):
+                    try:
+                        # Generate test certificate
+                        from utils.pdf_generator import PDFGenerator
+                        generator = PDFGenerator(template_path)
+                        
+                        # Generate preview with test data
+                        preview_pdf = generator.generate_preview("Test", "Certificate")
+                        
+                        # Show success and download button
+                        st.success("✅ Test certificate generated successfully!")
+                        st.download_button(
+                            label="📥 Download Test Certificate",
+                            data=preview_pdf,
+                            file_name=f"test_{template.get('filename', 'certificate.pdf')}",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                        
+                        # Show field mapping info
+                        if generator.field_mapping:
+                            st.info(f"Field mapping detected: {generator.field_mapping}")
+                            
+                    except Exception as e:
+                        st.error(f"❌ Error generating test certificate: {str(e)}")
+                        logger.error(f"Test certificate generation failed: {e}", exc_info=True)
+                else:
+                    st.error("Template file not found!")
             
             # Delete template
             if st.button("🗑️ Delete Template", use_container_width=True, type="secondary"):
