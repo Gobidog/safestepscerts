@@ -46,7 +46,8 @@ class AuthConfig:
 @dataclass
 class StorageConfig:
     """Storage configuration for templates and generated files"""
-    use_local_storage: bool = os.getenv("USE_LOCAL_STORAGE", "false").lower() == "true"
+    # Auto-detect storage mode: use local storage if GCS is not configured
+    use_local_storage: bool = field(init=False)
     local_storage_path: Path = Path(os.getenv("LOCAL_STORAGE_PATH", "./local_storage"))
     
     # GCS Configuration
@@ -55,16 +56,22 @@ class StorageConfig:
     gcs_credentials_path: Optional[str] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     
     def __post_init__(self):
-        # Create local storage directory if using local storage
+        # Auto-enable local storage if GCS is not configured
+        explicit_local = os.getenv("USE_LOCAL_STORAGE", "").lower() == "true"
+        has_gcs = bool(self.gcs_bucket_name)
+        
+        # Use local storage if explicitly set OR if GCS is not configured
+        self.use_local_storage = explicit_local or not has_gcs
+        
+        # Log storage mode
         if self.use_local_storage:
+            logger.info(f"Using local storage at: {self.local_storage_path}")
+            # Create local storage directories
             self.local_storage_path.mkdir(parents=True, exist_ok=True)
             (self.local_storage_path / "templates").mkdir(exist_ok=True)
             (self.local_storage_path / "generated").mkdir(exist_ok=True)
-        
-        # Validate GCS configuration if not using local storage
-        if not self.use_local_storage and not self.gcs_bucket_name:
-            logger.error("GCS bucket name required when not using local storage")
-            raise ValueError("GCS_BUCKET_NAME environment variable must be set")
+        else:
+            logger.info(f"Using Google Cloud Storage bucket: {self.gcs_bucket_name}")
 
 
 @dataclass
