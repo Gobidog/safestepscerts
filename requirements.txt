@@ -27,6 +27,7 @@ structlog==24.1.0
 # Utilities
 Pillow==10.2.0  # Image processing
 requests==2.31.0  # HTTP requests
+chardet==5.2.0  # Character encoding detection
 pytz==2023.3  # Timezone handling
 
 # Development & Testing (optional but recommended)
