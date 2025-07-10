@@ -14,7 +14,7 @@ import threading
 import time
 
 from config import config
-from utils.storage import cleanup_old_files
+from utils.storage import cleanup_old_files, list_templates, get_usage_statistics, get_activity_logs
 from utils.auth import is_session_valid, get_current_user
 
 # Configure structured logging
@@ -104,8 +104,41 @@ def inject_custom_css():
             padding-top: 2rem;
         }}
         
-        section[data-testid="stSidebar"] * {{
+        /* Sidebar text should be white */
+        section[data-testid="stSidebar"] {{
+            color: white;
+        }}
+        
+        section[data-testid="stSidebar"] h1,
+        section[data-testid="stSidebar"] h2,
+        section[data-testid="stSidebar"] h3,
+        section[data-testid="stSidebar"] h4,
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] label {{
             color: white !important;
+        }}
+        
+        /* Sidebar buttons styling */
+        section[data-testid="stSidebar"] button {{
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white !important;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }}
+        
+        section[data-testid="stSidebar"] button:hover {{
+            background-color: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }}
+        
+        section[data-testid="stSidebar"] button[kind="primary"] {{
+            background-color: var(--accent-color);
+            color: var(--primary-color) !important;
+            border: none;
+        }}
+        
+        section[data-testid="stSidebar"] button[kind="primary"]:hover {{
+            background-color: #7FB335;
         }}
         
         /* Logo container */
@@ -858,7 +891,6 @@ def show_generate_step():
 
 def show_admin_dashboard():
     """Display the admin dashboard"""
-    from utils.storage import list_templates, get_usage_statistics, get_activity_logs
     
     # Initialize admin page state
     if 'admin_page' not in st.session_state:
