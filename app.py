@@ -1043,10 +1043,6 @@ def show_admin_dashboard_main():
     
     with col1:
         # Templates card
-        if st.button("templates_card", key="dash_templates", label_visibility="hidden"):
-            st.session_state.admin_page = 'templates'
-            st.rerun()
-        
         st.markdown(f"""
             <div class="action-card">
                 <h2>📄 Templates</h2>
@@ -1055,11 +1051,11 @@ def show_admin_dashboard_main():
             </div>
         """, unsafe_allow_html=True)
         
-        # Analytics card
-        if st.button("analytics_card", key="dash_analytics", label_visibility="hidden"):
-            st.session_state.admin_page = 'analytics'
+        if st.button("Manage Templates", key="dash_templates", use_container_width=True):
+            st.session_state.admin_page = 'templates'
             st.rerun()
-            
+        
+        # Analytics card
         st.markdown(f"""
             <div class="action-card">
                 <h2>📊 Analytics</h2>
@@ -1067,13 +1063,13 @@ def show_admin_dashboard_main():
                 <h3>{stats.get('total_certificates', 0)} Total</h3>
             </div>
         """, unsafe_allow_html=True)
+        
+        if st.button("View Analytics", key="dash_analytics", use_container_width=True):
+            st.session_state.admin_page = 'analytics'
+            st.rerun()
     
     with col2:
         # Users card
-        if st.button("users_card", key="dash_users", label_visibility="hidden"):
-            st.session_state.admin_page = 'users'
-            st.rerun()
-            
         st.markdown("""
             <div class="action-card">
                 <h2>👥 Users</h2>
@@ -1082,11 +1078,11 @@ def show_admin_dashboard_main():
             </div>
         """, unsafe_allow_html=True)
         
-        # Settings card
-        if st.button("settings_card", key="dash_settings", label_visibility="hidden"):
-            st.session_state.admin_page = 'settings'
+        if st.button("Manage Users", key="dash_users", use_container_width=True):
+            st.session_state.admin_page = 'users'
             st.rerun()
-            
+        
+        # Settings card
         st.markdown("""
             <div class="action-card">
                 <h2>⚙️ Settings</h2>
@@ -1094,6 +1090,10 @@ def show_admin_dashboard_main():
                 <h3>System OK</h3>
             </div>
         """, unsafe_allow_html=True)
+        
+        if st.button("System Settings", key="dash_settings", use_container_width=True):
+            st.session_state.admin_page = 'settings'
+            st.rerun()
     
     # Recent activity
     st.markdown("### Recent Activity")
