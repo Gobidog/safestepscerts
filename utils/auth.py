@@ -3,6 +3,7 @@ Authentication utilities for Certificate Generator.
 Handles password validation, session management, decorators, and rate limiting.
 """
 import bcrypt
+import os
 import secrets
 import time
 from datetime import datetime, timedelta
@@ -17,8 +18,17 @@ from config import config
 
 logger = structlog.get_logger()
 
-# JWT secret for CSRF tokens
-JWT_SECRET = secrets.token_urlsafe(32)
+# JWT secret for CSRF tokens - must be persistent across restarts
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    logger.error("CRITICAL: JWT_SECRET environment variable is not set!")
+    logger.error("Sessions will not work without JWT_SECRET. To generate a secure secret:")
+    logger.error("python -c \"import secrets; print(secrets.token_urlsafe(32))\"")
+    logger.error("Then set it in your environment: export JWT_SECRET='your-secret-key'")
+    raise RuntimeError(
+        "JWT_SECRET environment variable is required for session management. "
+        "Please set JWT_SECRET in your environment or .env file."
+    )
 JWT_ALGORITHM = "HS256"
 
 

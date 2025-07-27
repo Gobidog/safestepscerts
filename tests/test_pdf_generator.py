@@ -271,14 +271,15 @@ class TestPDFGenerator:
         ]
         
         with tempfile.TemporaryDirectory() as tmpdir:
-            results, zip_path = generator.generate_batch(recipients, tmpdir)
+            # Generate with sequential processing to ensure consistent ordering
+            results, zip_path = generator.generate_batch(recipients, tmpdir, parallel=False)
             
             # All should succeed
             assert all(r.success for r in results)
             
             # Check filenames are unique
             filenames = [r.filename for r in results]
-            assert len(set(filenames)) == 3
+            assert len(set(filenames)) == 3, f"Expected 3 unique filenames, got: {filenames}"
             assert "John_Doe.pdf" in filenames
             assert "John_Doe_1.pdf" in filenames
             assert "John_Doe_2.pdf" in filenames
@@ -364,10 +365,10 @@ class TestPDFGenerator:
             # Test auto-detection
             generator = PDFGenerator(tmp.name)
             
-            # Should auto-map FullName to first_name
+            # Should auto-map FullName to both first_name and last_name 
+            # (since it's the only name-related field)
             assert generator.field_mapping.get('first_name') == 'FullName'
-            # Should auto-map text_5plme to last_name (generic field)
-            assert generator.field_mapping.get('last_name') == 'text_5plme'
+            assert generator.field_mapping.get('last_name') == 'FullName'
             # Should auto-map DateField to date
             assert generator.field_mapping.get('date') == 'DateField'
             

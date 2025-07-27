@@ -39,6 +39,23 @@ Before diving into specific issues, try these steps:
 2. Save your work frequently
 3. Keep the tab active if working on large batches
 
+#### Sessions Lost After Application Restart (Admin Issue)
+**Symptoms**: All users logged out when application restarts
+
+**Cause**: JWT_SECRET not configured in environment variables
+
+**Solutions for Admins**:
+1. Ensure JWT_SECRET is set in environment:
+   ```bash
+   # Generate a persistent secret
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+2. Add to deployment configuration
+3. Use same JWT_SECRET across all instances
+4. Never change JWT_SECRET unless absolutely necessary
+
+⚠️ **Warning**: Without JWT_SECRET set, all sessions will be lost whenever the application restarts!
+
 ### File Upload Issues
 
 #### "No file selected" or upload button not working
@@ -290,6 +307,8 @@ Before diving into specific issues, try these steps:
 | "Permission denied" | Access restricted | Check user type |
 | "Template not found" | Missing template | Contact admin |
 | "Rate limit exceeded" | Too many requests | Wait 1 minute |
+| "Invalid or missing CSRF token" | Security token expired | Refresh page and retry |
+| "Please login to access this page" | Session lost or expired | Log in again |
 
 ### Advanced Troubleshooting
 

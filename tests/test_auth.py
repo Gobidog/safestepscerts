@@ -2,12 +2,12 @@
 Unit tests for authentication module
 """
 import pytest
-import streamlit as st
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 import bcrypt
 from jose import jwt
 
+# Import auth functions without importing streamlit directly
 from utils.auth import (
     hash_password,
     validate_password,
@@ -122,22 +122,25 @@ class TestPasswordValidation:
 class TestSessionManagement:
     """Test session management functionality"""
     
-    def setup_method(self):
+    @pytest.fixture(autouse=True)
+    def setup(self, mock_streamlit):
         """Reset session state before each test"""
         # Clear session state
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
+        mock_streamlit.session_state.clear()
+        # Make st available to test methods
+        self.st = mock_streamlit
+        yield
     
-    def test_create_session(self):
+    def test_create_session(self, mock_streamlit):
         """Test session creation"""
         session_id = create_session("testuser", "user")
         
-        assert st.session_state.authenticated is True
-        assert st.session_state.username == "testuser"
-        assert st.session_state.role == "user"
-        assert st.session_state.session_id == session_id
-        assert isinstance(st.session_state.login_time, datetime)
-        assert isinstance(st.session_state.last_activity, datetime)
+        assert mock_streamlit.session_state.authenticated is True
+        assert mock_streamlit.session_state.username == "testuser"
+        assert mock_streamlit.session_state.role == "user"
+        assert mock_streamlit.session_state.session_id == session_id
+        assert isinstance(mock_streamlit.session_state.login_time, datetime)
+        assert isinstance(mock_streamlit.session_state.last_activity, datetime)
     
     def test_is_session_valid_authenticated(self):
         """Test session validation for authenticated session"""
@@ -158,10 +161,10 @@ class TestSessionManagement:
         create_session("testuser", "user")
         
         # Simulate expired session
-        st.session_state.last_activity = datetime.now() - timedelta(minutes=2)
+        self.st.session_state.last_activity = datetime.now() - timedelta(minutes=2)
         
         assert is_session_valid() is False
-        assert st.session_state.get("authenticated") is None
+        assert self.st.session_state.get("authenticated") is None
     
     def test_get_current_user_authenticated(self):
         """Test getting current user when authenticated"""
@@ -183,16 +186,16 @@ class TestSessionManagement:
         """Test logout functionality"""
         # Create session
         create_session("testuser", "user")
-        assert st.session_state.authenticated is True
+        assert self.st.session_state.authenticated is True
         
         # Logout
         logout()
         
         # Verify session cleared
-        assert st.session_state.get("authenticated") is None
-        assert st.session_state.get("username") is None
-        assert st.session_state.get("role") is None
-        assert st.session_state.get("session_id") is None
+        assert self.st.session_state.get("authenticated") is None
+        assert self.st.session_state.get("username") is None
+        assert self.st.session_state.get("role") is None
+        assert self.st.session_state.get("session_id") is None
 
 
 class TestRateLimiter:
@@ -257,15 +260,20 @@ class TestRateLimiter:
 class TestCSRFProtection:
     """Test CSRF protection functionality"""
     
-    def setup_method(self):
+    @pytest.fixture(autouse=True)
+    def setup(self, mock_streamlit):
         """Reset session state before each test"""
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
+        # Clear session state
+        mock_streamlit.session_state.clear()
+        # Make st available to test methods
+        self.st = mock_streamlit
+        yield
     
     @patch('utils.auth.config')
     def test_generate_csrf_token_enabled(self, mock_config):
         """Test CSRF token generation when enabled"""
         mock_config.auth.enable_csrf_protection = True
+        mock_config.auth.session_timeout_minutes = 30
         
         # Create session
         create_session("testuser", "user")
@@ -274,7 +282,7 @@ class TestCSRFProtection:
         token = generate_csrf_token()
         
         assert token != ""
-        assert st.session_state.csrf_token == token
+        assert self.st.session_state.csrf_token == token
         
         # Verify token structure
         from utils.auth import JWT_SECRET, JWT_ALGORITHM
@@ -295,6 +303,7 @@ class TestCSRFProtection:
     def test_validate_csrf_token_valid(self, mock_config):
         """Test CSRF token validation with valid token"""
         mock_config.auth.enable_csrf_protection = True
+        mock_config.auth.session_timeout_minutes = 30
         
         # Create session and token
         create_session("testuser", "user")
@@ -307,13 +316,14 @@ class TestCSRFProtection:
     def test_validate_csrf_token_invalid_session(self, mock_config):
         """Test CSRF token validation with mismatched session"""
         mock_config.auth.enable_csrf_protection = True
+        mock_config.auth.session_timeout_minutes = 30
         
         # Create session and token
         create_session("testuser", "user")
         token = generate_csrf_token()
         
         # Change session
-        st.session_state.session_id = "different_session"
+        self.st.session_state.session_id = "different_session"
         
         # Validate should fail
         assert validate_csrf_token(token) is False
@@ -339,10 +349,14 @@ class TestCSRFProtection:
 class TestPasswordUpdate:
     """Test password update functionality"""
     
-    def setup_method(self):
+    @pytest.fixture(autouse=True)
+    def setup(self, mock_streamlit):
         """Reset session state before each test"""
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
+        # Clear session state
+        mock_streamlit.session_state.clear()
+        # Make st available to test methods
+        self.st = mock_streamlit
+        yield
     
     @patch('utils.auth.config')
     def test_update_passwords_valid(self, mock_config):
@@ -358,11 +372,11 @@ class TestPasswordUpdate:
         )
         
         assert result is True
-        assert "password_hashes" in st.session_state
+        assert "password_hashes" in self.st.session_state
         
         # Verify new passwords work
-        user_hash = st.session_state.password_hashes["user"]
-        admin_hash = st.session_state.password_hashes["admin"]
+        user_hash = self.st.session_state.password_hashes["user"]
+        admin_hash = self.st.session_state.password_hashes["admin"]
         
         assert bcrypt.checkpw("NewUser123!".encode('utf-8'), user_hash.encode('utf-8'))
         assert bcrypt.checkpw("NewAdmin123!".encode('utf-8'), admin_hash.encode('utf-8'))
@@ -378,16 +392,20 @@ class TestPasswordUpdate:
         assert result is True
         
         # Only user password should be updated
-        assert "user" in st.session_state.password_hashes
+        assert "user" in self.st.session_state.password_hashes
 
 
 class TestLoginFunction:
     """Test login functionality"""
     
-    def setup_method(self):
+    @pytest.fixture(autouse=True)
+    def setup(self, mock_streamlit):
         """Reset session state before each test"""
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
+        # Clear session state
+        mock_streamlit.session_state.clear()
+        # Make st available to test methods
+        self.st = mock_streamlit
+        yield
     
     @patch('utils.auth.validate_password')
     @patch('utils.auth.rate_limiter')
@@ -401,7 +419,7 @@ class TestLoginFunction:
         assert success is True
         assert role == "admin"
         assert error is None
-        assert st.session_state.authenticated is True
+        assert self.st.session_state.authenticated is True
     
     @patch('utils.auth.validate_password')
     @patch('utils.auth.rate_limiter')

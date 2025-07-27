@@ -26,33 +26,41 @@ class TestSpreadsheetValidator:
     @pytest.fixture
     def valid_csv_file(self):
         """Create a valid CSV file for testing"""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8') as f:
+        # Create file with delete=False so we can close it properly
+        f = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8')
+        try:
             writer = csv.writer(f)
             writer.writerow(['First Name', 'Last Name', 'Email'])
             writer.writerow(['John', 'Doe', 'john@example.com'])
             writer.writerow(['Jane', 'Smith', 'jane@example.com'])
             writer.writerow(['Bob', 'Johnson', 'bob@example.com'])
+            f.close()  # Close the file before yielding
             
             yield f.name
-            
+        finally:
             # Cleanup
-            os.unlink(f.name)
+            if os.path.exists(f.name):
+                os.unlink(f.name)
     
     @pytest.fixture
     def valid_excel_file(self):
         """Create a valid Excel file for testing"""
-        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as f:
+        # Create file with delete=False so we can close it properly
+        f = tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False)
+        try:
             df = pd.DataFrame({
                 'First Name': ['Alice', 'Bob', 'Charlie'],
                 'Last Name': ['Anderson', 'Brown', 'Chen'],
                 'Department': ['HR', 'IT', 'Sales']
             })
+            f.close()  # Close the file handle before writing with pandas
             df.to_excel(f.name, index=False)
             
             yield f.name
-            
+        finally:
             # Cleanup
-            os.unlink(f.name)
+            if os.path.exists(f.name):
+                os.unlink(f.name)
     
     def test_validate_file_size_valid(self, validator):
         """Test file size validation with valid size"""
@@ -209,14 +217,18 @@ class TestSpreadsheetValidator:
     
     def test_validate_spreadsheet_empty_file(self, validator):
         """Test validating an empty spreadsheet"""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            f.write("")  # Empty file
+        f = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
+        try:
+            # Write headers only - no data rows
+            writer = csv.writer(f)
+            writer.writerow(['First Name', 'Last Name', 'Email'])
+            f.close()
             
             result = validator.validate_spreadsheet(f.name)
             
             assert result.valid is False
             assert "Spreadsheet is empty" in result.errors
-            
+        finally:
             os.unlink(f.name)
     
     def test_validate_spreadsheet_missing_columns(self, validator):

@@ -115,7 +115,8 @@ cd certificate-generator
 ```bash
 # Create .env.production
 cat > .env.production << EOF
-# Authentication
+# Authentication - CRITICAL: JWT_SECRET required for session persistence!
+JWT_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 USER_PASSWORD=GenerateSecurePasswordHere
 ADMIN_PASSWORD=GenerateSecureAdminPasswordHere
 
@@ -192,6 +193,7 @@ docker build -t cert-generator:latest .
 
 # Test locally
 docker run -p 8080:8080 \
+  -e JWT_SECRET="test-jwt-secret-for-local-development" \
   -e USER_PASSWORD=testuser123 \
   -e ADMIN_PASSWORD=testadmin456 \
   -e USE_LOCAL_STORAGE=true \
@@ -230,23 +232,23 @@ gcloud run deploy cert-generator \
   --concurrency 10 \
   --service-account cert-generator-sa@cert-generator-prod.iam.gserviceaccount.com \
   --set-env-vars "GCS_BUCKET=cert-templates-prod,USE_LOCAL_STORAGE=false" \
-  --set-secrets "USER_PASSWORD=user-password:latest,ADMIN_PASSWORD=admin-password:latest"
+  --set-secrets "JWT_SECRET=jwt-secret:latest,USER_PASSWORD=user-password:latest,ADMIN_PASSWORD=admin-password:latest"
 ```
 
 ### 2. Create Secrets (More Secure than Env Vars)
 ```bash
 # Create secrets in Secret Manager
+# CRITICAL: Generate and store JWT_SECRET for session persistence
+echo -n "$(python -c 'import secrets; print(secrets.token_urlsafe(32))')" | gcloud secrets create jwt-secret --data-file=-
 echo -n "YourSecureUserPassword" | gcloud secrets create user-password --data-file=-
 echo -n "YourSecureAdminPassword" | gcloud secrets create admin-password --data-file=-
 
 # Grant access to service account
-gcloud secrets add-iam-policy-binding user-password \
-  --member="serviceAccount:cert-generator-sa@cert-generator-prod.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding admin-password \
-  --member="serviceAccount:cert-generator-sa@cert-generator-prod.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
+for secret in jwt-secret user-password admin-password; do
+  gcloud secrets add-iam-policy-binding $secret \
+    --member="serviceAccount:cert-generator-sa@cert-generator-prod.iam.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+done
 ```
 
 ### 3. Configure Domain (Optional)
@@ -331,6 +333,7 @@ hey -n 1000 -c 10 -m GET ${SERVICE_URL}/_stcore/health
 - [ ] Application loads without errors
 - [ ] User login works
 - [ ] Admin login works
+- [ ] Sessions persist after restart (JWT_SECRET working)
 - [ ] File upload validates correctly
 - [ ] Certificate generation completes
 - [ ] Downloads work properly
@@ -385,9 +388,20 @@ gcloud scheduler jobs create storage cert-templates-backup \
 gcloud run services logs read cert-generator --region us-central1 --limit 50
 
 # Common causes:
-# - Missing environment variables
+# - Missing environment variables (JWT_SECRET, USER_PASSWORD, ADMIN_PASSWORD)
 # - Port mismatch (must use $PORT)
 # - Dependency issues
+# - Password validation failed (requires 8+ chars with mixed case and numbers)
+```
+
+#### "Sessions Lost on Restart"
+```bash
+# This is caused by missing JWT_SECRET environment variable
+# Check if JWT_SECRET is set:
+gcloud run services describe cert-generator --format="value(spec.template.spec.containers[0].env[?(@.name=='JWT_SECRET')].name)"
+
+# If missing, add it:
+gcloud run services update cert-generator --set-env-vars="JWT_SECRET=your-persistent-jwt-secret"
 ```
 
 #### "502 Bad Gateway"

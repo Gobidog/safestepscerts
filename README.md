@@ -50,7 +50,23 @@ pip install -r requirements.txt
 3. Set up environment variables:
 ```bash
 cp .env.example .env
-# Edit .env with your passwords and GCS bucket name
+# Edit .env with your values
+```
+
+**Required environment variables:**
+
+⚠️ **CRITICAL**: The `JWT_SECRET` environment variable MUST be set for session persistence. Without it, all user sessions will be lost when the application restarts!
+
+```bash
+# Generate secure values
+python -c "import secrets; print('JWT_SECRET=' + secrets.token_urlsafe(32))"
+python -c "import secrets; print('USER_PASSWORD=' + secrets.token_urlsafe(16))"
+python -c "import secrets; print('ADMIN_PASSWORD=' + secrets.token_urlsafe(16))"
+
+# Add to .env file
+JWT_SECRET=<generated_jwt_secret>  # REQUIRED for session persistence!
+USER_PASSWORD=<generated_user_password>
+ADMIN_PASSWORD=<generated_admin_password>
 ```
 
 4. Run the application:
@@ -65,7 +81,11 @@ streamlit run app.py
 docker build -t cert-generator .
 
 # Run locally
-docker run -p 8080:8080 -e USER_PASSWORD=user123 -e ADMIN_PASSWORD=admin456 cert-generator
+docker run -p 8080:8080 \
+  -e JWT_SECRET="your-persistent-jwt-secret-here" \
+  -e USER_PASSWORD="user123" \
+  -e ADMIN_PASSWORD="admin456" \
+  cert-generator
 ```
 
 ## Project Structure
@@ -98,6 +118,19 @@ The app uses two-level password authentication with bcrypt hashing:
 
 ## Security Requirements
 
+### 🔴 CRITICAL: JWT Secret Configuration
+⚠️ **IMPORTANT**: You MUST set a persistent JWT_SECRET for production:
+```bash
+# Generate a secure JWT secret (32+ characters)
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Set in environment
+JWT_SECRET=your_generated_secret_here
+```
+
+**WARNING**: Without setting JWT_SECRET, all user sessions will be lost when the application restarts!
+
+### Password Configuration
 ⚠️ **IMPORTANT**: Passwords MUST be set via environment variables:
 ```bash
 USER_PASSWORD=your_secure_user_password
@@ -106,8 +139,13 @@ ADMIN_PASSWORD=your_secure_admin_password
 
 The application will NOT start without these environment variables set. Passwords are hashed using bcrypt for security.
 
-### CSRF Protection
-Forms are protected with CSRF tokens when `ENABLE_CSRF_PROTECTION=true` (default)
+### Security Features
+- **CSRF Protection**: Forms are protected with JWT-based CSRF tokens when `ENABLE_CSRF_PROTECTION=true` (default)
+- **Rate Limiting**: 100 requests per hour per session (configurable)
+- **Session Management**: 30-minute timeout with activity tracking
+- **File Validation**: Content validation, not just extension checking
+- **Audit Logging**: All admin actions are logged
+- **Password Security**: Bcrypt hashing with strength requirements (8+ chars, mixed case, numbers)
 
 ## PDF Template Requirements
 
@@ -183,10 +221,12 @@ gcloud run deploy cert-generator \
 - **Max upload size**: 5MB
 - **Max rows per batch**: 500
 - **Processing time**: ~0.5 sec/certificate (sequential), ~0.1 sec/certificate (parallel)
-- **Parallel processing**: Up to 8 concurrent PDF generations
+- **Parallel processing**: Up to 8 concurrent PDF generations using ThreadPoolExecutor
 - **Request timeout**: 5 minutes
-- **Concurrent users**: 10
-- **Rate limit**: 40 requests/minute
+- **Concurrent users**: 10+ (limited by Streamlit hosting)
+- **Rate limit**: 100 requests/hour per session (configurable)
+- **Memory usage**: ~50-100MB per worker thread
+- **Certificate generation speed**: 500 certificates in ~10-15 seconds with 8 workers
 
 ## Storage Configuration
 
@@ -201,12 +241,19 @@ Set `USE_LOCAL_STORAGE=true` in `.env` to force local storage mode.
 
 ## Security Features
 
-- Session-based authentication with 30-minute timeout
-- File type validation (CSV/XLSX only)
-- Filename sanitization
-- Automatic temp file cleanup (1 hour)
-- HTTPS only on Cloud Run
-- No direct file system access
+- **Authentication**: Bcrypt password hashing with complexity requirements
+- **Session Management**: JWT-based sessions with 30-minute timeout
+- **CSRF Protection**: JWT tokens for form submission protection
+- **Rate Limiting**: Configurable per-session rate limits
+- **File Security**: 
+  - Content validation (not just extension)
+  - Filename sanitization
+  - Path traversal prevention
+  - Size limits (5MB default)
+- **Audit Logging**: All admin actions tracked
+- **Automatic Cleanup**: Temp files removed after 2 hours
+- **HTTPS Only**: Enforced on Cloud Run
+- **No Direct File Access**: All operations sandboxed
 
 ## Cost Estimates
 
