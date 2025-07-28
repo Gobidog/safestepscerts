@@ -11,6 +11,9 @@ import time
 from datetime import datetime
 import os
 import zipfile
+import structlog
+
+logger = structlog.get_logger()
 
 # Validate environment before starting app
 try:
@@ -419,6 +422,23 @@ def login_page():
             with st.expander("⚠️ Configuration Warnings", expanded=False):
                 for warning in env_health["warnings"]:
                     st.warning(f"• {warning}")
+    
+    # Ensure default users are initialized on first run
+    from utils.user_store import user_store
+    try:
+        # Check if any users exist
+        existing_users = user_store.list_users(include_inactive=True)
+        if not existing_users:
+            # Initialize default users
+            admin_password = config.auth.admin_password
+            user_password = config.auth.user_password
+            success = user_store.initialize_default_users(admin_password, user_password)
+            if success:
+                logger.info("Default users initialized successfully on Streamlit Cloud")
+            else:
+                logger.error("Failed to initialize default users")
+    except Exception as e:
+        logger.error(f"Error during user initialization: {e}")
     
     st.markdown("""
     <div class="welcome-container">
