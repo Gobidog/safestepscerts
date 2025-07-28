@@ -9,21 +9,36 @@ from typing import Optional
 
 def validate_environment():
     """Validate that required environment variables are present with user-friendly messages"""
-    # Try to import streamlit to check for secrets
-    try:
-        import streamlit as st
-        # Check Streamlit secrets first
-        if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
-            jwt_secret = st.secrets["JWT_SECRET"]
-            if jwt_secret and jwt_secret.strip():
-                return True
-    except:
-        pass
+    # Detect if we're running on Streamlit Cloud
+    is_streamlit_cloud = os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud" or "streamlit.io" in os.getenv("STREAMLIT_SERVER_ADDRESS", "")
     
-    # Check environment variable
-    jwt_secret = os.getenv("JWT_SECRET")
-    if jwt_secret and jwt_secret.strip():
-        return True
+    if is_streamlit_cloud:
+        # On Streamlit Cloud, ONLY check st.secrets
+        try:
+            import streamlit as st
+            if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
+                jwt_secret = st.secrets["JWT_SECRET"]
+                if jwt_secret and jwt_secret.strip():
+                    return True
+        except:
+            pass
+        # No fallback to environment variables on Streamlit Cloud
+    else:
+        # For local development, check both
+        try:
+            import streamlit as st
+            # Check Streamlit secrets first
+            if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
+                jwt_secret = st.secrets["JWT_SECRET"]
+                if jwt_secret and jwt_secret.strip():
+                    return True
+        except:
+            pass
+        
+        # Check environment variable for local dev
+        jwt_secret = os.getenv("JWT_SECRET")
+        if jwt_secret and jwt_secret.strip():
+            return True
     
     # If we get here, JWT_SECRET is missing or empty
     missing = ['JWT_SECRET']
@@ -45,13 +60,19 @@ Missing required environment variables: {missing}
 Need help? Check the documentation or contact your administrator.
         """
     
-    # Add Streamlit Cloud specific instructions
-    if "STREAMLIT" in os.environ:
-        error_msg += "\n\n📱 **Streamlit Cloud Users:**\n"
-        error_msg += "1. Go to your app settings\n"
-        error_msg += "2. Click 'Secrets' in the menu\n"
-        error_msg += "3. Add: JWT_SECRET = \"your-generated-secret\"\n"
-        error_msg += "4. Redeploy your app\n"
+    # Add platform-specific instructions
+    if is_streamlit_cloud:
+        error_msg += "\n\n📱 **Streamlit Cloud Instructions:**\n"
+        error_msg += "1. Go to your app dashboard at share.streamlit.io\n"
+        error_msg += "2. Click on your app settings (⋮ menu → Settings)\n"
+        error_msg += "3. Navigate to 'Secrets' in the left sidebar\n"
+        error_msg += "4. Add the following line:\n"
+        error_msg += "   JWT_SECRET = \"your-generated-secret-here\"\n"
+        error_msg += "5. Save and reboot the app\n\n"
+        error_msg += "⚠️ Note: Environment variables do NOT work on Streamlit Cloud. You MUST use Secrets."
+    else:
+        error_msg += "\n\n💻 **Local Development:**\n"
+        error_msg += "Set JWT_SECRET in your .env file or as an environment variable."
     
     raise EnvironmentError(error_msg.strip())
     return True
@@ -67,14 +88,26 @@ def get_environment_health() -> dict:
     
     # Check JWT_SECRET (from Streamlit secrets or environment)
     jwt_secret = None
-    try:
-        import streamlit as st
-        if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
-            jwt_secret = st.secrets["JWT_SECRET"]
-        if not jwt_secret or not jwt_secret.strip():
+    is_streamlit_cloud = os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud" or "streamlit.io" in os.getenv("STREAMLIT_SERVER_ADDRESS", "")
+    
+    if is_streamlit_cloud:
+        # On Streamlit Cloud, ONLY check st.secrets
+        try:
+            import streamlit as st
+            if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
+                jwt_secret = st.secrets["JWT_SECRET"]
+        except:
+            jwt_secret = None
+    else:
+        # For local development, check both
+        try:
+            import streamlit as st
+            if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
+                jwt_secret = st.secrets["JWT_SECRET"]
+            if not jwt_secret or not jwt_secret.strip():
+                jwt_secret = os.getenv("JWT_SECRET")
+        except:
             jwt_secret = os.getenv("JWT_SECRET")
-    except:
-        jwt_secret = os.getenv("JWT_SECRET")
     
     if not jwt_secret or not jwt_secret.strip():
         health["status"] = "critical"
@@ -112,20 +145,42 @@ class AuthConfig:
     
     def __post_init__(self):
         """Initialize passwords from Streamlit secrets or environment variables"""
-        try:
-            import streamlit as st
-            # Try Streamlit secrets first
-            if hasattr(st, 'secrets'):
-                self.user_password = st.secrets.get("USER_PASSWORD", "") or os.getenv("USER_PASSWORD", "SafeSteps2024!")
-                self.admin_password = st.secrets.get("ADMIN_PASSWORD", "") or os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
-                self.jwt_secret = st.secrets.get("JWT_SECRET", "") or os.getenv("JWT_SECRET", "")
-            else:
-                raise AttributeError("No secrets")
-        except:
-            # Fallback to environment variables only
-            self.user_password = os.getenv("USER_PASSWORD", "SafeSteps2024!")
-            self.admin_password = os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
-            self.jwt_secret = os.getenv("JWT_SECRET", "")
+        is_streamlit_cloud = os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud" or "streamlit.io" in os.getenv("STREAMLIT_SERVER_ADDRESS", "")
+        
+        if is_streamlit_cloud:
+            # On Streamlit Cloud, ONLY use st.secrets
+            try:
+                import streamlit as st
+                if hasattr(st, 'secrets'):
+                    self.user_password = st.secrets.get("USER_PASSWORD", "SafeSteps2024!")
+                    self.admin_password = st.secrets.get("ADMIN_PASSWORD", "Admin@SafeSteps2024")
+                    self.jwt_secret = st.secrets.get("JWT_SECRET", "")
+                else:
+                    # Use defaults if secrets not available
+                    self.user_password = "SafeSteps2024!"
+                    self.admin_password = "Admin@SafeSteps2024"
+                    self.jwt_secret = ""
+            except:
+                # Use defaults on error
+                self.user_password = "SafeSteps2024!"
+                self.admin_password = "Admin@SafeSteps2024"
+                self.jwt_secret = ""
+        else:
+            # For local development, try st.secrets first, then environment
+            try:
+                import streamlit as st
+                # Try Streamlit secrets first
+                if hasattr(st, 'secrets'):
+                    self.user_password = st.secrets.get("USER_PASSWORD", "") or os.getenv("USER_PASSWORD", "SafeSteps2024!")
+                    self.admin_password = st.secrets.get("ADMIN_PASSWORD", "") or os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
+                    self.jwt_secret = st.secrets.get("JWT_SECRET", "") or os.getenv("JWT_SECRET", "")
+                else:
+                    raise AttributeError("No secrets")
+            except:
+                # Fallback to environment variables only
+                self.user_password = os.getenv("USER_PASSWORD", "SafeSteps2024!")
+                self.admin_password = os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
+                self.jwt_secret = os.getenv("JWT_SECRET", "")
 
 
 @dataclass

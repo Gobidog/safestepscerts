@@ -29,21 +29,40 @@ logger = structlog.get_logger()
 # Validate environment with graceful error handling
 def get_jwt_secret_with_fallback():
     """Get JWT secret with user-friendly error messages and fallback options"""
-    # Try Streamlit secrets first (for Streamlit Cloud)
-    try:
-        if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
-            jwt_secret = st.secrets["JWT_SECRET"]
-            if jwt_secret and jwt_secret.strip():  # Check it's not empty
-                return jwt_secret
-    except Exception as e:
-        logger.debug(f"Could not read JWT_SECRET from Streamlit secrets: {e}")
+    # For Streamlit Cloud, ALWAYS use st.secrets
+    # For local development, use environment variables
     
-    # Fall back to environment variable
-    jwt_secret = os.getenv("JWT_SECRET")
-    if jwt_secret and jwt_secret.strip():  # Check it's not empty
-        return jwt_secret
+    # Detect if we're running on Streamlit Cloud
+    is_streamlit_cloud = os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud" or "streamlit.io" in os.getenv("STREAMLIT_SERVER_ADDRESS", "")
     
-    jwt_secret = None
+    if is_streamlit_cloud:
+        # On Streamlit Cloud, ONLY use st.secrets
+        try:
+            if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
+                jwt_secret = st.secrets["JWT_SECRET"]
+                if jwt_secret and jwt_secret.strip():  # Check it's not empty
+                    return jwt_secret
+            # If not found in secrets, this is a configuration error
+            jwt_secret = None
+        except Exception as e:
+            logger.error(f"Failed to read JWT_SECRET from Streamlit secrets: {e}")
+            jwt_secret = None
+    else:
+        # For local development, try st.secrets first, then environment
+        try:
+            if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
+                jwt_secret = st.secrets["JWT_SECRET"]
+                if jwt_secret and jwt_secret.strip():  # Check it's not empty
+                    return jwt_secret
+        except Exception as e:
+            logger.debug(f"Could not read JWT_SECRET from Streamlit secrets: {e}")
+        
+        # Fall back to environment variable for local dev
+        jwt_secret = os.getenv("JWT_SECRET")
+        if jwt_secret and jwt_secret.strip():  # Check it's not empty
+            return jwt_secret
+        
+        jwt_secret = None
     
     if not jwt_secret:
         # Check for common .env file issues
@@ -67,17 +86,23 @@ def get_jwt_secret_with_fallback():
         logger.error("JWT_SECRET configuration missing", **error_details)
         
         # Build user-friendly error message
-        error_msg = "🚨 Configuration Error: JWT_SECRET is required for secure sessions.\n"
-        error_msg += "Quick fix: Run 'python -c \"import secrets; print(secrets.token_urlsafe(32))\"' "
-        error_msg += "and add the result to your .env file as JWT_SECRET=your-secret"
+        is_streamlit_cloud = os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud" or "streamlit.io" in os.getenv("STREAMLIT_SERVER_ADDRESS", "")
         
-        # Add Streamlit Cloud specific instructions
-        if "STREAMLIT" in os.environ:
-            error_msg += "\n\n📱 **Streamlit Cloud Users:**\n"
-            error_msg += "1. Go to your app settings in Streamlit Cloud\n"
-            error_msg += "2. Click 'Secrets' in the menu\n"
-            error_msg += "3. Add: JWT_SECRET = \"your-generated-secret\"\n"
-            error_msg += "4. Redeploy your app\n"
+        if is_streamlit_cloud:
+            error_msg = "🚨 Configuration Error: JWT_SECRET must be configured in Streamlit Cloud Secrets\n\n"
+            error_msg += "📱 **Required Steps:**\n"
+            error_msg += "1. Go to your app dashboard at share.streamlit.io\n"
+            error_msg += "2. Click on your app settings (⋮ menu → Settings)\n"
+            error_msg += "3. Navigate to 'Secrets' in the left sidebar\n"
+            error_msg += "4. Add the following line:\n"
+            error_msg += "   JWT_SECRET = \"your-generated-secret-here\"\n"
+            error_msg += "5. Generate a secret: python -c \"import secrets; print(secrets.token_urlsafe(32))\"\n"
+            error_msg += "6. Save and reboot the app\n\n"
+            error_msg += "⚠️ Note: Environment variables do NOT work on Streamlit Cloud. You MUST use Secrets."
+        else:
+            error_msg = "🚨 Configuration Error: JWT_SECRET is required for secure sessions.\n"
+            error_msg += "Quick fix: Run 'python -c \"import secrets; print(secrets.token_urlsafe(32))\"' "
+            error_msg += "and add the result to your .env file as JWT_SECRET=your-secret"
         
         # Raise with user-friendly message
         raise EnvironmentError(error_msg)
