@@ -548,11 +548,12 @@ def login_with_credentials(username_or_email: str, password: str) -> Tuple[bool,
     if not allowed:
         return False, None, f"Too many login attempts. Try again in {retry_after} seconds."
     
-    # Initialize default admin if no users exist
+    # Initialize default users if no users exist
     if not user_store.list_users(include_inactive=True):
-        logger.info("No users found, initializing default admin")
+        logger.info("No users found, initializing default users")
         admin_password = config.auth.admin_password
-        user_store.initialize_default_admin(admin_password)
+        user_password = config.auth.user_password
+        user_store.initialize_default_users(admin_password, user_password)
     
     # Find user by username or email
     user = user_store.get_user_by_username_or_email(username_or_email)

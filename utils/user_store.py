@@ -45,6 +45,11 @@ class UserStore:
     """
     
     def __init__(self, storage_path: str = "./data/storage/users.json"):
+        # For Streamlit Cloud, use /tmp directory
+        if os.path.exists("/mount/src"):
+            storage_path = "/tmp/safesteps_users.json"
+            logger.info("Running on Streamlit Cloud, using /tmp for user storage")
+        
         self.storage_path = Path(storage_path)
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -280,6 +285,40 @@ class UserStore:
             logger.error("Failed to create default admin user")
         
         return admin
+    
+    def initialize_default_users(self, admin_password: str, user_password: str) -> bool:
+        """
+        Initialize default admin and test user if no users exist.
+        Returns True if users were created, False otherwise.
+        """
+        users = self._read_users()
+        
+        if users:
+            logger.info("Users already exist, skipping default user creation")
+            return False
+        
+        # Create default admin
+        admin = self.create_user(
+            username="admin",
+            email="admin@safesteps.local",
+            password=admin_password,
+            role="admin"
+        )
+        
+        # Create test user
+        testuser = self.create_user(
+            username="testuser",
+            email="testuser@safesteps.local",
+            password=user_password,
+            role="user"
+        )
+        
+        if admin and testuser:
+            logger.info("Created default admin and test user")
+            return True
+        else:
+            logger.error("Failed to create default users")
+            return False
 
 
 # Global user store instance
