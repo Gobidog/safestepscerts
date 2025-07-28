@@ -6,7 +6,46 @@ This guide addresses common issues with Streamlit applications experiencing fron
 
 ## Common Issues and Solutions
 
-### 0. Authentication Issues (RESOLVED)
+### 0. JWT_SECRET Configuration Error (RESOLVED)
+
+#### Problem: "Configuration Error: JWT_SECRET not set" on Streamlit Cloud
+**Status**: ✅ **COMPLETELY FIXED** - Application now provides clear, immediate error messages.
+
+**Symptoms:**
+- Application shows configuration error on startup
+- Error message: "Configuration Error: JWT_SECRET not set"
+- Platform-specific instructions displayed for Streamlit Cloud users
+- App stops cleanly without confusing errors
+
+**Root Cause:**
+JWT_SECRET environment variable not configured in Streamlit Cloud secrets, which is required for session management.
+
+**Solution:**
+✅ **IMPLEMENTED FIX** - Early environment validation with platform-specific guidance:
+
+1. **For Streamlit Cloud Users:**
+   - Go to your app settings on share.streamlit.io
+   - Click "Secrets" in the menu
+   - Add: `JWT_SECRET = "your-generated-secret"`
+   - Redeploy your app
+
+2. **For Local Development:**
+   ```bash
+   # Generate JWT secret
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   
+   # Add to .env file
+   JWT_SECRET=your_generated_secret_here
+   ```
+
+**Key Improvements:**
+- Immediate failure with clear error message
+- No delayed authentication errors
+- Platform-specific instructions (detects Streamlit Cloud)
+- Clean error handling without stack traces
+- Improved developer experience
+
+### 1. Authentication Issues (RESOLVED)
 
 #### Problem: Cannot Log In With Documented Credentials
 **Status**: ✅ **COMPLETELY FIXED** - All documented credentials now work correctly.

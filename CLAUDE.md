@@ -43,6 +43,7 @@ All agents must:
 ### 4. Security Requirements
 - Never store passwords in code
 - Use environment variables for sensitive data
+- **JWT_SECRET must be configured** - App won't start without it
 - Validate all file uploads (type, size, content)
 - Implement rate limiting (40 req/min)
 - Sanitize all filenames
@@ -88,7 +89,8 @@ pages/
 └── 3_admin.py    # Admin features only
 ```
 
-**Recent Critical Fixes (2025-07-28):**
+**Recent Critical Fixes (2025-07-29):**
+- ✅ **JWT_SECRET Configuration Fix** - Application now provides clear, immediate error messages when JWT_SECRET is not configured on Streamlit Cloud
 - ✅ **Authentication System FIXED** - All documented logins now work correctly (admin: `Admin@SafeSteps2024`, testuser: `UserPass123`)
 - ✅ **Password Reset Utility** - Created comprehensive password reset tool with backup functionality
 - ✅ **SpreadsheetValidator.validate_file()** - Added missing method for Streamlit UploadedFile handling

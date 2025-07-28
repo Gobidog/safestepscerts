@@ -12,6 +12,15 @@ from datetime import datetime
 import os
 import zipfile
 
+# Validate environment before starting app
+try:
+    from config import validate_environment
+    validate_environment()
+except EnvironmentError as e:
+    st.error("🚨 Configuration Error")
+    st.error(str(e))
+    st.stop()
+
 # Import utilities
 from utils.auth import (
     login_with_password, 

@@ -66,12 +66,21 @@ def get_jwt_secret_with_fallback():
         # Log structured error information
         logger.error("JWT_SECRET configuration missing", **error_details)
         
+        # Build user-friendly error message
+        error_msg = "🚨 Configuration Error: JWT_SECRET is required for secure sessions.\n"
+        error_msg += "Quick fix: Run 'python -c \"import secrets; print(secrets.token_urlsafe(32))\"' "
+        error_msg += "and add the result to your .env file as JWT_SECRET=your-secret"
+        
+        # Add Streamlit Cloud specific instructions
+        if "STREAMLIT" in os.environ:
+            error_msg += "\n\n📱 **Streamlit Cloud Users:**\n"
+            error_msg += "1. Go to your app settings in Streamlit Cloud\n"
+            error_msg += "2. Click 'Secrets' in the menu\n"
+            error_msg += "3. Add: JWT_SECRET = \"your-generated-secret\"\n"
+            error_msg += "4. Redeploy your app\n"
+        
         # Raise with user-friendly message
-        raise EnvironmentError(
-            f"🚨 Configuration Error: JWT_SECRET is required for secure sessions.\n"
-            f"Quick fix: Run 'python -c \"import secrets; print(secrets.token_urlsafe(32))\"' "
-            f"and add the result to your .env file as JWT_SECRET=your-secret"
-        )
+        raise EnvironmentError(error_msg)
     
     # Validate JWT secret quality
     if len(jwt_secret) < 32:

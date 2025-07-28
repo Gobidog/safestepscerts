@@ -44,7 +44,16 @@ Missing required environment variables: {missing}
 
 Need help? Check the documentation or contact your administrator.
         """
-        raise EnvironmentError(error_msg.strip())
+    
+    # Add Streamlit Cloud specific instructions
+    if "STREAMLIT" in os.environ:
+        error_msg += "\n\n📱 **Streamlit Cloud Users:**\n"
+        error_msg += "1. Go to your app settings\n"
+        error_msg += "2. Click 'Secrets' in the menu\n"
+        error_msg += "3. Add: JWT_SECRET = \"your-generated-secret\"\n"
+        error_msg += "4. Redeploy your app\n"
+    
+    raise EnvironmentError(error_msg.strip())
     return True
 
 
