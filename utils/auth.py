@@ -31,14 +31,19 @@ def get_jwt_secret_with_fallback():
     """Get JWT secret with user-friendly error messages and fallback options"""
     # Try Streamlit secrets first (for Streamlit Cloud)
     try:
-        jwt_secret = st.secrets.get("JWT_SECRET")
-        if jwt_secret:
-            return jwt_secret
-    except:
-        pass
+        if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
+            jwt_secret = st.secrets["JWT_SECRET"]
+            if jwt_secret and jwt_secret.strip():  # Check it's not empty
+                return jwt_secret
+    except Exception as e:
+        logger.debug(f"Could not read JWT_SECRET from Streamlit secrets: {e}")
     
     # Fall back to environment variable
     jwt_secret = os.getenv("JWT_SECRET")
+    if jwt_secret and jwt_secret.strip():  # Check it's not empty
+        return jwt_secret
+    
+    jwt_secret = None
     
     if not jwt_secret:
         # Check for common .env file issues

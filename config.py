@@ -14,14 +14,20 @@ def validate_environment():
         import streamlit as st
         # Check Streamlit secrets first
         if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
-            return True
+            jwt_secret = st.secrets["JWT_SECRET"]
+            if jwt_secret and jwt_secret.strip():
+                return True
     except:
         pass
     
-    required_vars = ['JWT_SECRET']
-    missing = [var for var in required_vars if not os.getenv(var)]
-    if missing:
-        error_msg = f"""
+    # Check environment variable
+    jwt_secret = os.getenv("JWT_SECRET")
+    if jwt_secret and jwt_secret.strip():
+        return True
+    
+    # If we get here, JWT_SECRET is missing or empty
+    missing = ['JWT_SECRET']
+    error_msg = f"""
 🚨 Environment Configuration Error:
 
 Missing required environment variables: {missing}
@@ -54,11 +60,14 @@ def get_environment_health() -> dict:
     jwt_secret = None
     try:
         import streamlit as st
-        jwt_secret = st.secrets.get("JWT_SECRET", os.getenv("JWT_SECRET"))
+        if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
+            jwt_secret = st.secrets["JWT_SECRET"]
+        if not jwt_secret or not jwt_secret.strip():
+            jwt_secret = os.getenv("JWT_SECRET")
     except:
         jwt_secret = os.getenv("JWT_SECRET")
     
-    if not jwt_secret:
+    if not jwt_secret or not jwt_secret.strip():
         health["status"] = "critical"
         health["issues"].append("JWT_SECRET not set - sessions will not work")
     elif len(jwt_secret) < 32:
@@ -97,9 +106,12 @@ class AuthConfig:
         try:
             import streamlit as st
             # Try Streamlit secrets first
-            self.user_password = st.secrets.get("USER_PASSWORD", os.getenv("USER_PASSWORD", "SafeSteps2024!"))
-            self.admin_password = st.secrets.get("ADMIN_PASSWORD", os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024"))
-            self.jwt_secret = st.secrets.get("JWT_SECRET", os.getenv("JWT_SECRET", ""))
+            if hasattr(st, 'secrets'):
+                self.user_password = st.secrets.get("USER_PASSWORD", "") or os.getenv("USER_PASSWORD", "SafeSteps2024!")
+                self.admin_password = st.secrets.get("ADMIN_PASSWORD", "") or os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
+                self.jwt_secret = st.secrets.get("JWT_SECRET", "") or os.getenv("JWT_SECRET", "")
+            else:
+                raise AttributeError("No secrets")
         except:
             # Fallback to environment variables only
             self.user_password = os.getenv("USER_PASSWORD", "SafeSteps2024!")
