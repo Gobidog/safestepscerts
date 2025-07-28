@@ -9,6 +9,15 @@ from typing import Optional
 
 def validate_environment():
     """Validate that required environment variables are present with user-friendly messages"""
+    # Try to import streamlit to check for secrets
+    try:
+        import streamlit as st
+        # Check Streamlit secrets first
+        if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
+            return True
+    except:
+        pass
+    
     required_vars = ['JWT_SECRET']
     missing = [var for var in required_vars if not os.getenv(var)]
     if missing:
@@ -41,8 +50,14 @@ def get_environment_health() -> dict:
         "warnings": []
     }
     
-    # Check JWT_SECRET
-    jwt_secret = os.getenv("JWT_SECRET")
+    # Check JWT_SECRET (from Streamlit secrets or environment)
+    jwt_secret = None
+    try:
+        import streamlit as st
+        jwt_secret = st.secrets.get("JWT_SECRET", os.getenv("JWT_SECRET"))
+    except:
+        jwt_secret = os.getenv("JWT_SECRET")
+    
     if not jwt_secret:
         health["status"] = "critical"
         health["issues"].append("JWT_SECRET not set - sessions will not work")
@@ -69,12 +84,27 @@ def get_environment_health() -> dict:
 @dataclass
 class AuthConfig:
     """Authentication configuration"""
-    user_password: str = os.getenv("USER_PASSWORD", "SafeSteps2024!")
-    admin_password: str = os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
+    # Try Streamlit secrets first, then environment variables, then defaults
+    user_password: str = None
+    admin_password: str = None
     session_timeout_minutes: int = 30
     enable_csrf_protection: bool = True
-    jwt_secret: str = os.getenv("JWT_SECRET", "")
+    jwt_secret: str = None
     jwt_algorithm: str = "HS256"
+    
+    def __post_init__(self):
+        """Initialize passwords from Streamlit secrets or environment variables"""
+        try:
+            import streamlit as st
+            # Try Streamlit secrets first
+            self.user_password = st.secrets.get("USER_PASSWORD", os.getenv("USER_PASSWORD", "SafeSteps2024!"))
+            self.admin_password = st.secrets.get("ADMIN_PASSWORD", os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024"))
+            self.jwt_secret = st.secrets.get("JWT_SECRET", os.getenv("JWT_SECRET", ""))
+        except:
+            # Fallback to environment variables only
+            self.user_password = os.getenv("USER_PASSWORD", "SafeSteps2024!")
+            self.admin_password = os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
+            self.jwt_secret = os.getenv("JWT_SECRET", "")
 
 
 @dataclass

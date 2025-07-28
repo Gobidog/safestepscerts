@@ -29,6 +29,15 @@ logger = structlog.get_logger()
 # Validate environment with graceful error handling
 def get_jwt_secret_with_fallback():
     """Get JWT secret with user-friendly error messages and fallback options"""
+    # Try Streamlit secrets first (for Streamlit Cloud)
+    try:
+        jwt_secret = st.secrets.get("JWT_SECRET")
+        if jwt_secret:
+            return jwt_secret
+    except:
+        pass
+    
+    # Fall back to environment variable
     jwt_secret = os.getenv("JWT_SECRET")
     
     if not jwt_secret:
