@@ -33,7 +33,8 @@ def get_jwt_secret_with_fallback():
     # For local development, use environment variables
     
     # Detect if we're running on Streamlit Cloud
-    is_streamlit_cloud = os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud" or "streamlit.io" in os.getenv("STREAMLIT_SERVER_ADDRESS", "")
+    # Streamlit Cloud runs apps from /mount/src directory
+    is_streamlit_cloud = os.path.exists("/mount/src") or os.getcwd().startswith("/mount/src")
     
     if is_streamlit_cloud:
         # On Streamlit Cloud, ONLY use st.secrets

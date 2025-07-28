@@ -10,7 +10,7 @@ from typing import Optional
 def validate_environment():
     """Validate that required environment variables are present with user-friendly messages"""
     # Detect if we're running on Streamlit Cloud
-    is_streamlit_cloud = os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud" or "streamlit.io" in os.getenv("STREAMLIT_SERVER_ADDRESS", "")
+    is_streamlit_cloud = os.path.exists("/mount/src") or os.getcwd().startswith("/mount/src")
     
     if is_streamlit_cloud:
         # On Streamlit Cloud, ONLY check st.secrets
@@ -88,7 +88,7 @@ def get_environment_health() -> dict:
     
     # Check JWT_SECRET (from Streamlit secrets or environment)
     jwt_secret = None
-    is_streamlit_cloud = os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud" or "streamlit.io" in os.getenv("STREAMLIT_SERVER_ADDRESS", "")
+    is_streamlit_cloud = os.path.exists("/mount/src") or os.getcwd().startswith("/mount/src")
     
     if is_streamlit_cloud:
         # On Streamlit Cloud, ONLY check st.secrets
@@ -145,7 +145,7 @@ class AuthConfig:
     
     def __post_init__(self):
         """Initialize passwords from Streamlit secrets or environment variables"""
-        is_streamlit_cloud = os.getenv("STREAMLIT_RUNTIME_ENV") == "cloud" or "streamlit.io" in os.getenv("STREAMLIT_SERVER_ADDRESS", "")
+        is_streamlit_cloud = os.path.exists("/mount/src") or os.getcwd().startswith("/mount/src")
         
         if is_streamlit_cloud:
             # On Streamlit Cloud, ONLY use st.secrets
