@@ -21,7 +21,7 @@ import structlog
 from collections import defaultdict, deque
 from jose import jwt
 
-from config import config, validate_environment
+from config import config
 from .user_store import user_store, User
 
 logger = structlog.get_logger()
@@ -77,16 +77,20 @@ def get_jwt_secret_with_fallback():
     
     return jwt_secret
 
-# Initialize JWT configuration with error handling
-try:
-    validate_environment()
-    JWT_SECRET = get_jwt_secret_with_fallback()
-    JWT_ALGORITHM = "HS256"
-    logger.info("Authentication system initialized successfully")
-except EnvironmentError as e:
-    logger.error(f"Environment validation failed: {e}")
-    # Re-raise to prevent application startup with invalid config
-    raise
+# JWT configuration will be initialized lazily
+JWT_SECRET = None
+JWT_ALGORITHM = "HS256"
+
+def _ensure_jwt_initialized():
+    """Ensure JWT is initialized before use"""
+    global JWT_SECRET
+    if JWT_SECRET is None:
+        try:
+            JWT_SECRET = get_jwt_secret_with_fallback()
+            logger.info("JWT configuration initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize JWT: {e}")
+            raise
 
 
 class RateLimiter:
@@ -589,6 +593,9 @@ def generate_csrf_token() -> str:
     if not config.auth.enable_csrf_protection:
         return ""
     
+    # Ensure JWT is initialized
+    _ensure_jwt_initialized()
+    
     # Get current session
     user = get_current_user()
     if not user:
@@ -615,6 +622,9 @@ def validate_csrf_token(token: str) -> bool:
     """Validate a CSRF token"""
     if not config.auth.enable_csrf_protection:
         return True
+    
+    # Ensure JWT is initialized
+    _ensure_jwt_initialized()
     
     try:
         # Decode token
