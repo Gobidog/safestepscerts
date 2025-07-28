@@ -428,17 +428,42 @@ def login_page():
     try:
         # Check if any users exist
         existing_users = user_store.list_users(include_inactive=True)
+        logger.info(f"Found {len(existing_users)} existing users")
+        
         if not existing_users:
             # Initialize default users
             admin_password = config.auth.admin_password
             user_password = config.auth.user_password
-            success = user_store.initialize_default_users(admin_password, user_password)
-            if success:
-                logger.info("Default users initialized successfully on Streamlit Cloud")
+            
+            logger.info(f"Creating default users: admin password={admin_password}, user password={user_password}")
+            
+            # Create admin user first
+            admin_user = user_store.create_user("admin", "admin@safesteps.local", admin_password, "admin")
+            if admin_user:
+                logger.info("Admin user created successfully")
             else:
-                logger.error("Failed to initialize default users")
+                logger.error("Failed to create admin user")
+            
+            # Create test user
+            test_user = user_store.create_user("testuser", "testuser@safesteps.local", user_password, "user")
+            if test_user:
+                logger.info("Test user created successfully")
+            else:
+                logger.error("Failed to create test user")
+            
+            # Verify users were created
+            final_users = user_store.list_users(include_inactive=True)
+            logger.info(f"After initialization: {len(final_users)} users exist")
+            for user in final_users:
+                logger.info(f"User: {user.username} ({user.role}) - Active: {user.is_active}")
+        else:
+            logger.info("Users already exist, skipping initialization")
+            for user in existing_users:
+                logger.info(f"Existing user: {user.username} ({user.role}) - Active: {user.is_active}")
     except Exception as e:
         logger.error(f"Error during user initialization: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
     
     st.markdown("""
     <div class="welcome-container">
