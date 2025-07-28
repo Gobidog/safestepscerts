@@ -97,6 +97,14 @@ ADMIN_PASSWORD=AdminPass456
 - Templates don't persist on Streamlit Community Cloud (ephemeral storage) - use sample_templates/ or configure GCS
 
 ## Recent Changes
+- 2025-07-10: COMPREHENSIVE SECURITY & PERFORMANCE REVIEW
+  - Performed detailed security analysis of authentication, input validation, file handling
+  - Found strong security foundation: bcrypt hashing, CSRF protection, rate limiting
+  - Identified JWT secret regeneration issue (critical fix needed)
+  - Analyzed performance: parallel PDF generation efficient (8 workers, ~0.1s per cert)
+  - Memory usage concern during PDF flattening operation
+  - Created detailed SECURITY_PERFORMANCE_REVIEW.md with recommendations
+  - Overall scores: Security 8/10, Performance 8/10
 - 2025-07-10: CRITICAL PRODUCTION FIXES
   - Fixed placeholder "Test generation would happen here" with actual functionality
   - Fixed NameError by moving storage imports to global scope

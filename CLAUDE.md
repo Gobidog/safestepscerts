@@ -68,14 +68,18 @@ All agents must:
 - Test rate limiting
 - Test template upload/deletion
 - Test password changes
+- Test dashboard navigation buttons (Templates, Users)
+- Test SpreadsheetValidator.validate_file() with various file formats
+- Test certificate generation end-to-end workflow
 - Verify Docker build works
 
 ### 8. Code Organization
 ```
 utils/
 ├── auth.py         # Authentication only
+├── user_store.py   # User data management
 ├── pdf_generator.py # PDF operations only
-├── validators.py   # All validation logic
+├── validators.py   # All validation logic (includes validate_file method)
 └── storage.py     # GCS and file operations
 
 pages/
@@ -83,6 +87,13 @@ pages/
 ├── 2_generate.py  # Main generation UI
 └── 3_admin.py    # Admin features only
 ```
+
+**Recent Critical Fixes (2025-07-28):**
+- ✅ **Authentication System FIXED** - All documented logins now work correctly (admin: `Admin@SafeSteps2024`, testuser: `UserPass123`)
+- ✅ **Password Reset Utility** - Created comprehensive password reset tool with backup functionality
+- ✅ **SpreadsheetValidator.validate_file()** - Added missing method for Streamlit UploadedFile handling
+- ✅ **Dashboard Navigation** - Fixed "Go to Templates" and "Go to Users" buttons using session state
+- ✅ **Certificate Generation Workflow** - Restored end-to-end functionality with proper validation
 
 ### 9. Dependencies
 Core dependencies (check versions with Context7):

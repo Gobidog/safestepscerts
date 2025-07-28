@@ -2,34 +2,82 @@
 Authentication utilities for Certificate Generator.
 Handles password validation, session management, decorators, and rate limiting.
 """
+# Ensure environment variables are loaded
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load .env file if available
+except ImportError:
+    pass  # dotenv not available, rely on system environment
+
 import bcrypt
 import os
 import secrets
 import time
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Dict, Optional, Tuple, Any, Callable
+from typing import Dict, Optional, Tuple, Any, Callable, List
 import streamlit as st
 import structlog
 from collections import defaultdict, deque
 from jose import jwt
 
-from config import config
+from config import config, validate_environment
+from .user_store import user_store, User
 
 logger = structlog.get_logger()
 
-# JWT secret for CSRF tokens - must be persistent across restarts
-JWT_SECRET = os.getenv("JWT_SECRET")
-if not JWT_SECRET:
-    logger.error("CRITICAL: JWT_SECRET environment variable is not set!")
-    logger.error("Sessions will not work without JWT_SECRET. To generate a secure secret:")
-    logger.error("python -c \"import secrets; print(secrets.token_urlsafe(32))\"")
-    logger.error("Then set it in your environment: export JWT_SECRET='your-secret-key'")
-    raise RuntimeError(
-        "JWT_SECRET environment variable is required for session management. "
-        "Please set JWT_SECRET in your environment or .env file."
-    )
-JWT_ALGORITHM = "HS256"
+# Validate environment with graceful error handling
+def get_jwt_secret_with_fallback():
+    """Get JWT secret with user-friendly error messages and fallback options"""
+    jwt_secret = os.getenv("JWT_SECRET")
+    
+    if not jwt_secret:
+        # Check for common .env file issues
+        env_files = ['.env', '.env.local', '.env.production']
+        found_env_files = [f for f in env_files if os.path.exists(f)]
+        
+        error_details = {
+            "error": "JWT_SECRET environment variable is not set",
+            "impact": "User sessions will not work without this configuration",
+            "solutions": [
+                "1. Generate a secure JWT_SECRET: python -c \"import secrets; print(secrets.token_urlsafe(32))\"",
+                "2. Add to .env file: JWT_SECRET=your-generated-secret",
+                "3. Or set environment variable: export JWT_SECRET='your-generated-secret'",
+                "4. Restart the application"
+            ],
+            "found_env_files": found_env_files,
+            "documentation": "See setup guide in docs/DEVELOPER_GUIDE.md"
+        }
+        
+        # Log structured error information
+        logger.error("JWT_SECRET configuration missing", **error_details)
+        
+        # Raise with user-friendly message
+        raise EnvironmentError(
+            f"🚨 Configuration Error: JWT_SECRET is required for secure sessions.\n"
+            f"Quick fix: Run 'python -c \"import secrets; print(secrets.token_urlsafe(32))\"' "
+            f"and add the result to your .env file as JWT_SECRET=your-secret"
+        )
+    
+    # Validate JWT secret quality
+    if len(jwt_secret) < 32:
+        logger.warning(
+            "JWT_SECRET is shorter than recommended minimum of 32 characters. "
+            "Consider generating a new one for better security."
+        )
+    
+    return jwt_secret
+
+# Initialize JWT configuration with error handling
+try:
+    validate_environment()
+    JWT_SECRET = get_jwt_secret_with_fallback()
+    JWT_ALGORITHM = "HS256"
+    logger.info("Authentication system initialized successfully")
+except EnvironmentError as e:
+    logger.error(f"Environment validation failed: {e}")
+    # Re-raise to prevent application startup with invalid config
+    raise
 
 
 class RateLimiter:
@@ -85,8 +133,8 @@ def hash_password(password: str) -> str:
 
 def validate_password(password: str, role: str = "user") -> bool:
     """
-    Validate password for given role.
-    Returns True if password is correct for the role.
+    DEPRECATED: Use validate_user_password instead.
+    Kept for backward compatibility during transition.
     """
     stored_passwords = get_stored_passwords()
     
@@ -102,6 +150,24 @@ def validate_password(password: str, role: str = "user") -> bool:
         logger.info(f"Successful login for role: {role}")
     else:
         logger.warning(f"Failed login attempt for role: {role}")
+    
+    return is_valid
+
+
+def validate_user_password(user: User, password: str) -> bool:
+    """
+    Validate password for a specific user.
+    Returns True if password is correct.
+    """
+    if not user or not password:
+        return False
+    
+    is_valid = user_store.verify_password(user, password)
+    
+    if is_valid:
+        logger.info(f"Successful password validation for user: {user.username}")
+    else:
+        logger.warning(f"Failed password validation for user: {user.username}")
     
     return is_valid
 
@@ -169,13 +235,16 @@ def update_passwords(user_password: Optional[str] = None,
         return False
 
 
-def create_session(username: str, role: str) -> str:
+def create_session(username: str, role: str, user_id: Optional[str] = None, 
+                  email: Optional[str] = None) -> str:
     """Create a new user session and return session ID"""
     session_id = secrets.token_urlsafe(32)
     
     st.session_state.authenticated = True
     st.session_state.username = username
     st.session_state.role = role
+    st.session_state.user_id = user_id
+    st.session_state.email = email
     st.session_state.session_id = session_id
     st.session_state.login_time = datetime.now()
     st.session_state.last_activity = datetime.now()
@@ -185,7 +254,7 @@ def create_session(username: str, role: str) -> str:
 
 
 def is_session_valid() -> bool:
-    """Check if current session is valid and not expired"""
+    """Check if current session is valid and not expired with enhanced validation"""
     if not st.session_state.get("authenticated", False):
         return False
     
@@ -198,9 +267,87 @@ def is_session_valid() -> bool:
             logout()
             return False
     
+    # Enhanced session validation
+    session_issues = validate_session_health()
+    if session_issues:
+        logger.warning(f"Session validation issues detected: {session_issues}")
+        # For now, just log warnings but don't invalidate session
+        # In stricter security environments, could logout() here
+    
     # Update last activity
     st.session_state.last_activity = datetime.now()
     return True
+
+
+def validate_session_health() -> list:
+    """Validate session health and return any issues found"""
+    issues = []
+    
+    # Check for required session fields
+    required_fields = ["username", "role", "session_id", "login_time"]
+    for field in required_fields:
+        if not st.session_state.get(field):
+            issues.append(f"Missing session field: {field}")
+    
+    # Check session ID format
+    session_id = st.session_state.get("session_id")
+    if session_id and len(session_id) < 32:
+        issues.append("Session ID appears to be weak (too short)")
+    
+    # Check login time validity
+    login_time = st.session_state.get("login_time")
+    if login_time:
+        # Check if login time is in the future (clock skew issue)
+        if login_time > datetime.now():
+            issues.append("Login time is in the future - possible clock skew")
+        
+        # Check if session is extremely old (possible stale session)
+        max_session_age = timedelta(hours=24)  # Maximum 24 hours
+        if datetime.now() - login_time > max_session_age:
+            issues.append("Session is older than maximum allowed age")
+    
+    return issues
+
+
+def get_session_status_info() -> dict:
+    """Get detailed session status information for troubleshooting"""
+    if not st.session_state.get("authenticated", False):
+        return {
+            "status": "not_authenticated",
+            "message": "No active session"
+        }
+    
+    user = get_current_user()
+    if not user:
+        return {
+            "status": "invalid_session",
+            "message": "Session data is corrupted"
+        }
+    
+    # Calculate session age and remaining time
+    login_time = st.session_state.get("login_time")
+    last_activity = st.session_state.get("last_activity")
+    
+    if login_time and last_activity:
+        session_age = datetime.now() - login_time
+        time_since_activity = datetime.now() - last_activity
+        timeout_minutes = config.auth.session_timeout_minutes
+        time_remaining = timedelta(minutes=timeout_minutes) - time_since_activity
+        
+        return {
+            "status": "active",
+            "username": user.get("username"),
+            "role": user.get("role"),
+            "session_age": str(session_age).split('.')[0],  # Remove microseconds
+            "time_since_activity": str(time_since_activity).split('.')[0],
+            "time_remaining": str(max(time_remaining, timedelta(0))).split('.')[0],
+            "session_health": validate_session_health()
+        }
+    
+    return {
+        "status": "incomplete_session",
+        "message": "Session is missing timing information"
+    }
 
 
 def get_current_user() -> Optional[Dict[str, Any]]:
@@ -211,6 +358,8 @@ def get_current_user() -> Optional[Dict[str, Any]]:
     return {
         "username": st.session_state.get("username"),
         "role": st.session_state.get("role"),
+        "user_id": st.session_state.get("user_id"),
+        "email": st.session_state.get("email"),
         "session_id": st.session_state.get("session_id"),
         "login_time": st.session_state.get("login_time")
     }
@@ -221,8 +370,8 @@ def logout():
     logger.info(f"User {st.session_state.get('username')} logged out")
     
     # Clear session state
-    for key in ["authenticated", "username", "role", "session_id", 
-                "login_time", "last_activity"]:
+    for key in ["authenticated", "username", "role", "user_id", "email", 
+                "session_id", "login_time", "last_activity"]:
         if key in st.session_state:
             del st.session_state[key]
 
@@ -311,8 +460,8 @@ def validate_password_strength(password: str) -> Tuple[bool, str]:
 
 def login_with_password(password: str) -> Tuple[bool, Optional[str], Optional[str]]:
     """
-    Attempt to login with a password.
-    Returns (success, role, error_message)
+    DEPRECATED: Use login_with_credentials instead.
+    Kept for backward compatibility during transition.
     """
     # Check rate limit for login attempts
     ip_key = "login_attempt"  # In production, use actual IP
@@ -332,6 +481,49 @@ def login_with_password(password: str) -> Tuple[bool, Optional[str], Optional[st
         return True, "user", None
     
     return False, None, "Invalid password"
+
+
+def login_with_credentials(username_or_email: str, password: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    Attempt to login with username/email and password.
+    Returns (success, role, error_message)
+    """
+    # Check rate limit for login attempts
+    ip_key = f"login_attempt_{username_or_email}"  # Rate limit per username
+    allowed, retry_after = rate_limiter.is_allowed(ip_key)
+    
+    if not allowed:
+        return False, None, f"Too many login attempts. Try again in {retry_after} seconds."
+    
+    # Initialize default admin if no users exist
+    if not user_store.list_users(include_inactive=True):
+        logger.info("No users found, initializing default admin")
+        admin_password = config.auth.admin_password
+        user_store.initialize_default_admin(admin_password)
+    
+    # Find user by username or email
+    user = user_store.get_user_by_username_or_email(username_or_email)
+    
+    if not user:
+        logger.warning(f"Login attempt for non-existent user: {username_or_email}")
+        return False, None, "Invalid username/email or password"
+    
+    # Check if user is active
+    if not user.is_active:
+        logger.warning(f"Login attempt for inactive user: {user.username}")
+        return False, None, "Account is disabled. Please contact administrator."
+    
+    # Validate password
+    if not validate_user_password(user, password):
+        return False, None, "Invalid username/email or password"
+    
+    # Update last login
+    user_store.update_user(user.user_id, last_login=datetime.now().isoformat())
+    
+    # Create session
+    session_id = create_session(user.username, user.role, user.user_id, user.email)
+    
+    return True, user.role, None
 
 
 def check_session_hijacking() -> bool:
@@ -458,3 +650,77 @@ def csrf_protected(func: Callable) -> Callable:
         
         return func(*args, **kwargs)
     return wrapper
+
+
+# User management functions
+def create_user(username: str, email: str, password: str, role: str = "user") -> Optional[User]:
+    """
+    Create a new user. Admin only function.
+    """
+    # Validate password strength
+    is_strong, msg = validate_password_strength(password)
+    if not is_strong:
+        logger.warning(f"User creation rejected - weak password: {msg}")
+        raise ValueError(msg)
+    
+    # Create user
+    user = user_store.create_user(username, email, password, role)
+    if user:
+        log_activity("create_user", {"username": username, "role": role})
+    
+    return user
+
+
+def list_users(include_inactive: bool = False) -> List[User]:
+    """List all users. Admin only function."""
+    return user_store.list_users(include_inactive)
+
+
+def update_user_role(user_id: str, new_role: str) -> Optional[User]:
+    """Update user role. Admin only function."""
+    if new_role not in ["user", "admin"]:
+        raise ValueError("Invalid role")
+    
+    user = user_store.update_user(user_id, role=new_role)
+    if user:
+        log_activity("update_user_role", {"user_id": user_id, "new_role": new_role})
+    
+    return user
+
+
+def toggle_user_status(user_id: str) -> Optional[User]:
+    """Toggle user active status. Admin only function."""
+    user = user_store.get_user(user_id)
+    if not user:
+        return None
+    
+    new_status = not user.is_active
+    user = user_store.update_user(user_id, is_active=new_status)
+    if user:
+        log_activity("toggle_user_status", {"user_id": user_id, "is_active": new_status})
+    
+    return user
+
+
+def reset_user_password(user_id: str, new_password: str) -> bool:
+    """Reset user password. Admin only function."""
+    # Validate password strength
+    is_strong, msg = validate_password_strength(new_password)
+    if not is_strong:
+        logger.warning(f"Password reset rejected - weak password: {msg}")
+        raise ValueError(msg)
+    
+    success = user_store.update_password(user_id, new_password)
+    if success:
+        log_activity("reset_user_password", {"user_id": user_id})
+    
+    return success
+
+
+def delete_user(user_id: str) -> bool:
+    """Delete a user. Admin only function."""
+    success = user_store.delete_user(user_id)
+    if success:
+        log_activity("delete_user", {"user_id": user_id})
+    
+    return success

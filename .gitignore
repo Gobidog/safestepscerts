@@ -202,3 +202,47 @@ nohup.out
 # Local test files
 test_generation.py
 test_*.pdf
+
+# Development artifacts
+*.pid
+streamlit.pid
+MESSAGES/
+evidence/
+.serena/
+.context_bridge.json
+.verification_lock.json
+*_ALIVE.md
+*_STATUS.md
+*_MESSAGES.json
+*_HEARTBEAT.md
+FOR_*.md
+EXECUTION_PLAN.md
+TEST_REQUIREMENTS.md
+VERIFICATION_*.md
+PROBLEM_INSIGHT_*.md
+CODE_IMPLEMENTATION_*.md
+SYSTEM_VERIFICATION_*.md
+DOCUMENTATION_*.md
+*_COMPLETE.md
+*_REPORT.md
+ISSUES_FOUND.md
+NEXT_ITERATION_PLAN.md
+messaging_init.json
+doc_agent_startup.py
+documentation_startup.py
+problem_insight_complete.py
+test_navigation_direct.py
+RESTART_VERIFICATION.py
+STREAMLIT_RESTART_SCRIPT.sh
+admin_dashboard_*.html
+UI_DESIGN_GUIDE.md
+BROWSER_CACHE_INSTRUCTIONS.md
+echo
+node_modules/
+pages_old/
+
+# User data (preserve structure but not content)
+data/storage/*.json
+!data/storage/.gitkeep
+data/templates/*
+!data/templates/.gitkeep

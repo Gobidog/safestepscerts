@@ -344,6 +344,50 @@ class SpreadsheetValidator:
         
         return result
     
+    def validate_file(self, uploaded_file) -> ValidationResult:
+        """
+        Validate uploaded file for certificate generation
+        Wrapper method that handles Streamlit UploadedFile objects
+        
+        Args:
+            uploaded_file: Streamlit UploadedFile object
+            
+        Returns:
+            ValidationResult with validation status and cleaned data
+        """
+        import tempfile
+        
+        # Create temporary directory if it doesn't exist
+        temp_dir = "temp"
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+        
+        # Save uploaded file temporarily
+        temp_path = os.path.join(temp_dir, uploaded_file.name)
+        
+        try:
+            with open(temp_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            # Use existing validate_spreadsheet method
+            result = self.validate_spreadsheet(temp_path)
+            
+            return result
+            
+        except Exception as e:
+            # Return error result if file handling fails
+            result = ValidationResult(valid=False)
+            result.errors.append(f"Error processing uploaded file: {str(e)}")
+            return result
+            
+        finally:
+            # Clean up temp file
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except Exception as cleanup_error:
+                logger.warning(f"Could not clean up temp file {temp_path}: {cleanup_error}")
+    
     def validate_character_encoding(self, text: str) -> bool:
         """
         Validate that text contains only valid Unicode characters
