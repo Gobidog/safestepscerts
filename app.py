@@ -1644,13 +1644,13 @@ def admin_step2_validate():
         validator = SpreadsheetValidator()
         validation_result = validator.validate_file(st.session_state.admin_uploaded_file)
         
-        if validation_result.is_valid:
-            st.session_state.admin_validated_data = validation_result.data
+        if validation_result.valid:
+            st.session_state.admin_validated_data = validation_result.cleaned_data
             st.success("✅ Data validation successful!")
             
             # Show preview of data
             st.subheader("📋 Data Preview")
-            st.dataframe(validation_result.data.head(10), use_container_width=True)
+            st.dataframe(validation_result.cleaned_data.head(10), use_container_width=True)
             
             col1, col2 = st.columns(2)
             with col1:
