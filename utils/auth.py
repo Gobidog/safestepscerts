@@ -21,7 +21,6 @@ import structlog
 from collections import defaultdict, deque
 from jose import jwt
 
-from config import config
 from .user_store import user_store, User
 from .environment import is_streamlit_cloud, get_jwt_secret, get_environment_info
 
@@ -129,11 +128,19 @@ class RateLimiter:
         self.requests[key] = deque()
 
 
-# Global rate limiter instance
-rate_limiter = RateLimiter(
-    max_requests=config.rate_limit.requests_limit,
-    window_seconds=config.rate_limit.window_seconds
-)
+# Global rate limiter instance - will be initialized lazily
+rate_limiter = None
+
+def _get_rate_limiter():
+    """Get or create the rate limiter instance"""
+    global rate_limiter
+    if rate_limiter is None:
+        from config import config
+        rate_limiter = RateLimiter(
+            max_requests=config.rate_limit.requests_limit,
+            window_seconds=config.rate_limit.window_seconds
+        )
+    return rate_limiter
 
 
 def hash_password(password: str) -> str:
@@ -199,6 +206,7 @@ def get_stored_passwords() -> Dict[str, str]:
     password_hashes = {}
     
     # Get passwords from config (these should be set via environment variables)
+    from config import config
     user_password = config.auth.user_password
     admin_password = config.auth.admin_password
     
@@ -274,6 +282,7 @@ def is_session_valid() -> bool:
     # Check session timeout
     last_activity = st.session_state.get("last_activity")
     if last_activity:
+        from config import config
         timeout_minutes = config.auth.session_timeout_minutes
         if datetime.now() - last_activity > timedelta(minutes=timeout_minutes):
             logger.info("Session expired due to inactivity")
@@ -344,6 +353,7 @@ def get_session_status_info() -> dict:
     if login_time and last_activity:
         session_age = datetime.now() - login_time
         time_since_activity = datetime.now() - last_activity
+        from config import config
         timeout_minutes = config.auth.session_timeout_minutes
         time_remaining = timedelta(minutes=timeout_minutes) - time_since_activity
         
@@ -442,7 +452,7 @@ def rate_limit(key_func: Optional[Callable] = None):
                 key = user.get("session_id") if user else "anonymous"
             
             # Check rate limit
-            allowed, retry_after = rate_limiter.is_allowed(key)
+            allowed, retry_after = _get_rate_limiter().is_allowed(key)
             
             if not allowed:
                 st.error(f"Rate limit exceeded. Please try again in {retry_after} seconds.")
@@ -478,7 +488,7 @@ def login_with_password(password: str) -> Tuple[bool, Optional[str], Optional[st
     """
     # Check rate limit for login attempts
     ip_key = "login_attempt"  # In production, use actual IP
-    allowed, retry_after = rate_limiter.is_allowed(ip_key)
+    allowed, retry_after = _get_rate_limiter().is_allowed(ip_key)
     
     if not allowed:
         return False, None, f"Too many login attempts. Try again in {retry_after} seconds."
@@ -503,7 +513,7 @@ def login_with_credentials(username_or_email: str, password: str) -> Tuple[bool,
     """
     # Check rate limit for login attempts
     ip_key = f"login_attempt_{username_or_email}"  # Rate limit per username
-    allowed, retry_after = rate_limiter.is_allowed(ip_key)
+    allowed, retry_after = _get_rate_limiter().is_allowed(ip_key)
     
     if not allowed:
         return False, None, f"Too many login attempts. Try again in {retry_after} seconds."
@@ -511,6 +521,7 @@ def login_with_credentials(username_or_email: str, password: str) -> Tuple[bool,
     # Initialize default users if no users exist
     if not user_store.list_users(include_inactive=True):
         logger.info("No users found, initializing default users")
+        from config import config
         admin_password = config.auth.admin_password
         user_password = config.auth.user_password
         user_store.initialize_default_users(admin_password, user_password)
@@ -591,6 +602,7 @@ def get_session_info() -> Dict[str, Any]:
 # CSRF Protection Functions
 def generate_csrf_token() -> str:
     """Generate a CSRF token for the current session"""
+    from config import config
     if not config.auth.enable_csrf_protection:
         return ""
     
@@ -621,6 +633,7 @@ def generate_csrf_token() -> str:
 
 def validate_csrf_token(token: str) -> bool:
     """Validate a CSRF token"""
+    from config import config
     if not config.auth.enable_csrf_protection:
         return True
     
@@ -658,6 +671,7 @@ def csrf_protected(func: Callable) -> Callable:
     """Decorator to require CSRF token validation for a function"""
     @wraps(func)
     def wrapper(*args, **kwargs):
+        from config import config
         if not config.auth.enable_csrf_protection:
             return func(*args, **kwargs)
         
