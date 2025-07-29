@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 import os
 import zipfile
+import tempfile
 import structlog
 
 logger = structlog.get_logger()
@@ -1048,10 +1049,14 @@ def step4_generate():
     st.header("Step 4: Generate Certificates")
     
     if not st.session_state.validated_data.empty and st.session_state.selected_template:
+        # Get template info for display
+        template_info = st.session_state.get('selected_template_info', {})
+        template_display_name = template_info.get('display_name', st.session_state.selected_template)
+        
         st.info(f"""
         **Ready to generate certificates:**
         - Recipients: {len(st.session_state.validated_data)}
-        - Template: {st.session_state.selected_template}
+        - Template: {template_display_name}
         """)
         
         col1, col2, col3 = st.columns([2, 1, 2])
@@ -1063,15 +1068,31 @@ def step4_generate():
                 generated_files = []
                 total = len(st.session_state.validated_data)
                 
-                # Get template path
-                template_path = f"templates/{st.session_state.selected_template}.pdf"
-                
-                # Initialize PDF generator
+                # Get template path using storage manager
                 try:
+                    template_path = storage.get_template_path(st.session_state.selected_template)
+                    if not template_path:
+                        st.error("Template file not found. Please select a different template.")
+                        return
+                    
+                    # Initialize PDF generator
                     generator = PDFGenerator(template_path)
+                    
+                    # Validate template
+                    validation_info = generator.validate_template()
+                    if not validation_info['valid']:
+                        st.error("Template validation failed:")
+                        for error in validation_info['errors']:
+                            st.error(f"• {error}")
+                        return
+                        
                 except Exception as e:
                     st.error(f"Error loading template: {str(e)}")
                     return
+                
+                # Create temp directory if it doesn't exist
+                temp_dir = Path("temp")
+                temp_dir.mkdir(exist_ok=True)
                 
                 # Generate certificates
                 for idx, row in st.session_state.validated_data.iterrows():
@@ -1081,28 +1102,45 @@ def step4_generate():
                     
                     # Generate certificate
                     try:
-                        # Extract name fields
-                        first_name = row.get('First Name', row.get('first name', ''))
-                        last_name = row.get('Last Name', row.get('last name', ''))
+                        # Extract name fields - handle various column name formats
+                        first_name = row.get('First Name', row.get('first name', row.get('FirstName', '')))
+                        last_name = row.get('Last Name', row.get('last name', row.get('LastName', '')))
+                        
+                        # Skip if no names
+                        if not first_name and not last_name:
+                            st.warning(f"Skipping row {idx + 1}: No name data found")
+                            continue
                         
                         # Generate unique filename
                         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                        safe_name = f"{first_name}_{last_name}".replace(' ', '_')
-                        output_path = f"temp/{safe_name}_{timestamp}.pdf"
+                        safe_name = f"{first_name}_{last_name}".replace(' ', '_').replace('/', '_')
+                        output_path = str(temp_dir / f"{safe_name}_{timestamp}.pdf")
                         
                         # Generate the certificate
                         pdf_path = generator.generate_certificate(
-                            first_name=str(first_name),
-                            last_name=str(last_name),
+                            first_name=str(first_name).strip(),
+                            last_name=str(last_name).strip(),
                             output_path=output_path
                         )
                         generated_files.append(pdf_path)
+                        
+                        # Log certificate generation
+                        storage.log_certificate_generation(
+                            user=get_current_user()['username'],
+                            template=template_display_name,
+                            count=1
+                        )
+                        
                     except Exception as e:
                         st.error(f"Error generating certificate for {first_name} {last_name}: {str(e)}")
+                        logger.error(f"Certificate generation error: {e}")
                 
                 st.session_state.generated_files = generated_files
                 progress_bar.progress(1.0)
                 status_text.text("All certificates generated!")
+                
+                # Show summary
+                st.success(f"✅ Generated {len(generated_files)} certificates successfully!")
                 
                 time.sleep(1)
                 st.session_state.workflow_step = 5
@@ -1271,50 +1309,189 @@ def render_dashboard():
 
 
 def render_templates_page():
-    """Render templates management page"""
+    """Render templates management page with full functionality"""
     st.title("Template Management")
     
-    # Upload new template
-    with st.expander("Upload New Template", expanded=False):
-        uploaded_template = st.file_uploader(
-            "Choose a PDF template",
+    # Upload new template section
+    with st.expander("📤 Upload New Template", expanded=False):
+        with st.form("upload_template_form"):
+            uploaded_template = st.file_uploader(
+                "Choose a PDF template",
+                type=['pdf'],
+                help="Select a PDF file with form fields for FirstName and LastName"
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                template_name = st.text_input(
+                    "Template Name",
+                    placeholder="e.g., Professional Certificate",
+                    help="A friendly name for this template"
+                )
+            with col2:
+                template_filename = st.text_input(
+                    "Filename (optional)",
+                    placeholder="e.g., professional_cert",
+                    help="Leave blank to auto-generate from template name"
+                )
+            
+            template_description = st.text_area(
+                "Template Description",
+                placeholder="Describe when to use this template...",
+                help="Optional description to help users choose the right template"
+            )
+            
+            submit_button = st.form_submit_button("💾 Save Template", type="primary")
+            
+            if submit_button and uploaded_template:
+                if not template_name:
+                    st.error("Please provide a template name")
+                else:
+                    try:
+                        # Generate filename if not provided
+                        if not template_filename:
+                            template_filename = template_name.lower().replace(" ", "_")
+                        
+                        # Ensure filename ends with .pdf
+                        if not template_filename.endswith('.pdf'):
+                            template_filename += '.pdf'
+                        
+                        # Prepare metadata
+                        metadata = {
+                            'display_name': template_name,
+                            'description': template_description,
+                            'uploaded_by': get_current_user()['username'],
+                            'uploaded_at': datetime.now().isoformat()
+                        }
+                        
+                        # Save template using storage manager
+                        if storage.save_template(uploaded_template, template_filename, metadata):
+                            st.success(f"✅ Template '{template_name}' uploaded successfully!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to save template. Please try again.")
+                            
+                    except Exception as e:
+                        st.error(f"Error uploading template: {str(e)}")
+                        logger.error(f"Template upload error: {e}")
+    
+    # Template validation tool
+    with st.expander("🔍 Validate Template", expanded=False):
+        st.info("Upload a PDF to check if it has the required form fields")
+        test_template = st.file_uploader(
+            "Choose a PDF to validate",
             type=['pdf'],
-            key="template_upload"
+            key="validate_template"
         )
         
-        if uploaded_template:
-            template_name = st.text_input("Template Name")
-            template_description = st.text_area("Template Description")
-            
-            if st.button("Save Template"):
-                # Save template logic here
-                st.success("Template uploaded successfully!")
+        if test_template:
+            try:
+                # Save temporarily to validate
+                with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+                    tmp.write(test_template.read())
+                    tmp_path = tmp.name
+                
+                # Validate using PDF generator
+                generator = PDFGenerator(tmp_path)
+                validation_info = generator.validate_template()
+                
+                # Clean up temp file
+                os.unlink(tmp_path)
+                
+                # Show validation results
+                if validation_info['valid']:
+                    st.success("✅ Template is valid!")
+                else:
+                    st.error("❌ Template validation failed")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Form Fields Found", len(validation_info['fields_found']))
+                    if validation_info['fields_found']:
+                        st.write("**Detected fields:**")
+                        for field in validation_info['fields_found']:
+                            st.write(f"• {field}")
+                
+                with col2:
+                    st.metric("Page Count", validation_info['page_count'])
+                    st.metric("File Size", f"{validation_info['file_size'] / 1024:.1f} KB")
+                
+                if validation_info['errors']:
+                    st.error("**Errors:**")
+                    for error in validation_info['errors']:
+                        st.error(f"• {error}")
+                        
+            except Exception as e:
+                st.error(f"Error validating template: {str(e)}")
     
-    # Existing templates
-    st.subheader("Existing Templates")
+    # Existing templates section
+    st.subheader("📄 Existing Templates")
     
-    templates = [
-        ("Professional Certificate", "Modern design for professional courses", "professional_certificate.pdf"),
-        ("Basic Certificate", "Simple and clean design", "basic_certificate.pdf"),
-        ("Workshop Certificate", "For workshops and short courses", "workshop_certificate.pdf"),
-        ("Multilingual Certificate", "Supports multiple languages", "multilingual_certificate.pdf")
-    ]
-    
-    for name, desc, file in templates:
-        col1, col2, col3 = st.columns([3, 2, 1])
+    try:
+        # Get actual templates from storage
+        templates = storage.list_templates()
         
-        with col1:
-            st.markdown(f"**{name}**")
-            st.caption(desc)
-        
-        with col2:
-            st.caption(f"File: {file}")
-        
-        with col3:
-            if st.button("Edit", key=f"edit_{file}"):
-                st.info(f"Editing {name}")
-            if st.button("Delete", key=f"delete_{file}"):
-                st.warning(f"Delete {name}?")
+        if not templates:
+            st.info("No templates uploaded yet. Use the upload form above to add your first template.")
+        else:
+            # Display templates in a nice grid
+            for template in templates:
+                with st.container():
+                    col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
+                    
+                    with col1:
+                        display_name = template.get('display_name', template.get('name', 'Unknown'))
+                        st.markdown(f"**{display_name}**")
+                        if template.get('description'):
+                            st.caption(template['description'])
+                    
+                    with col2:
+                        st.caption(f"📁 {template.get('filename', 'Unknown file')}")
+                        if template.get('size'):
+                            st.caption(f"Size: {template['size'] / 1024:.1f} KB")
+                    
+                    with col3:
+                        if template.get('created'):
+                            try:
+                                created_date = datetime.fromisoformat(template['created'].replace('Z', '+00:00'))
+                                st.caption(f"📅 {created_date.strftime('%Y-%m-%d')}")
+                            except:
+                                pass
+                    
+                    with col4:
+                        # Action buttons in a vertical layout
+                        if st.button("👁️ Preview", key=f"preview_{template['name']}"):
+                            try:
+                                # Generate preview using the template
+                                template_path = storage.get_template_path(template['name'])
+                                if template_path:
+                                    generator = PDFGenerator(template_path)
+                                    preview_bytes = generator.generate_preview("John", "Doe")
+                                    
+                                    st.download_button(
+                                        label="📥 Download Preview",
+                                        data=preview_bytes,
+                                        file_name=f"preview_{template['name']}",
+                                        mime="application/pdf",
+                                        key=f"download_preview_{template['name']}"
+                                    )
+                                else:
+                                    st.error("Template file not found")
+                            except Exception as e:
+                                st.error(f"Error generating preview: {str(e)}")
+                        
+                        if st.button("🗑️ Delete", key=f"delete_{template['name']}"):
+                            if storage.delete_template(template['name']):
+                                st.success(f"Template '{display_name}' deleted")
+                                st.rerun()
+                            else:
+                                st.error("Failed to delete template")
+                    
+                    st.divider()
+                    
+    except Exception as e:
+        st.error(f"Error loading templates: {str(e)}")
+        logger.error(f"Template listing error: {e}")
 
 
 def render_users_page():
@@ -1769,31 +1946,96 @@ def admin_step4_generate():
     # Generate button
     if len(st.session_state.admin_generated_files) == 0:
         if st.button("🏆 Generate Certificates", type="primary", use_container_width=True):
-            with st.spinner("Generating certificates..."):
-                try:
-                    # Generate certificates
-                    # Get template path from selected template
-                    if 'path' not in st.session_state.admin_selected_template:
-                        raise ValueError("Template path not found in selected template")
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            try:
+                # Get template path using storage manager
+                template_name = st.session_state.admin_selected_template.get('name')
+                if not template_name:
+                    st.error("Template name not found. Please select a valid template.")
+                    return
+                
+                template_path = storage.get_template_path(template_name)
+                if not template_path:
+                    st.error("Template file not found. The template may have been deleted.")
+                    return
+                
+                # Initialize PDF generator
+                pdf_generator = PDFGenerator(template_path)
+                
+                # Validate template
+                validation_info = pdf_generator.validate_template()
+                if not validation_info['valid']:
+                    st.error("Template validation failed:")
+                    for error in validation_info['errors']:
+                        st.error(f"• {error}")
+                    return
+                
+                # Prepare recipients data
+                recipients = []
+                for idx, row in st.session_state.admin_validated_data.iterrows():
+                    # Handle various column name formats
+                    first_name = row.get('First Name', row.get('first name', row.get('FirstName', '')))
+                    last_name = row.get('Last Name', row.get('last name', row.get('LastName', '')))
                     
-                    template_path = st.session_state.admin_selected_template['path']
-                    
-                    # Validate template path exists
-                    if not os.path.exists(template_path):
-                        raise FileNotFoundError(f"Template file not found: {template_path}")
-                    
-                    pdf_generator = PDFGenerator(template_path)
-                    results = pdf_generator.generate_batch(
-                        recipients=st.session_state.admin_validated_data
-                    )
-                    
-                    st.session_state.admin_generated_files = results
-                    st.success(f"✅ Successfully generated {len(results)} certificates!")
-                    st.session_state.admin_workflow_step = 5
-                    st.rerun()
-                    
-                except Exception as e:
-                    st.error(f"Error generating certificates: {str(e)}")
+                    if first_name or last_name:
+                        recipients.append({
+                            'first_name': str(first_name).strip(),
+                            'last_name': str(last_name).strip()
+                        })
+                
+                if not recipients:
+                    st.error("No valid recipients found in the data.")
+                    return
+                
+                # Generate certificates with progress callback
+                def update_progress(current, total, message):
+                    progress = current / total if total > 0 else 0
+                    progress_bar.progress(progress)
+                    status_text.text(message)
+                
+                results, zip_path = pdf_generator.generate_batch(
+                    recipients=recipients,
+                    progress_callback=update_progress,
+                    parallel=True
+                )
+                
+                # Convert results to the format expected by admin workflow
+                generated_files = []
+                for i, result in enumerate(results):
+                    if result.success:
+                        # Read the generated file
+                        output_dir = os.path.dirname(zip_path)
+                        file_path = os.path.join(output_dir, result.filename)
+                        
+                        if os.path.exists(file_path):
+                            with open(file_path, 'rb') as f:
+                                generated_files.append({
+                                    'name': result.filename,
+                                    'content': f.read()
+                                })
+                
+                st.session_state.admin_generated_files = generated_files
+                
+                # Log certificate generation
+                storage.log_certificate_generation(
+                    user=get_current_user()['username'],
+                    template=template_display_name,
+                    count=len(generated_files)
+                )
+                
+                progress_bar.progress(1.0)
+                status_text.text("Complete!")
+                st.success(f"✅ Successfully generated {len(generated_files)} certificates!")
+                
+                time.sleep(1)
+                st.session_state.admin_workflow_step = 5
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error generating certificates: {str(e)}")
+                logger.error(f"Admin certificate generation error: {e}")
     else:
         st.success("✅ Certificates have been generated!")
         if st.button("View Results →", type="primary", use_container_width=True):
