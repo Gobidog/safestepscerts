@@ -13,6 +13,8 @@ from dataclasses import dataclass, asdict
 import bcrypt
 import structlog
 
+from .environment import get_user_storage_path, get_environment_info, log_environment_info
+
 logger = structlog.get_logger()
 
 
@@ -44,19 +46,30 @@ class UserStore:
     Provides thread-safe operations with file locking.
     """
     
-    def __init__(self, storage_path: str = "./data/storage/users.json"):
-        # For Streamlit Cloud, use /tmp directory
-        if os.path.exists("/mount/src"):
-            storage_path = "/tmp/safesteps_users.json"
-            logger.info("Running on Streamlit Cloud, using /tmp for user storage")
+    def __init__(self, storage_path: Optional[str] = None):
+        # Use centralized environment detection for consistent storage path
+        if storage_path is None:
+            storage_path = get_user_storage_path()
+            logger.info("Using centralized environment detection for storage path")
         
         self.storage_path = Path(storage_path)
+        
+        # Log environment information for debugging
+        env_info = get_environment_info()
+        logger.info("UserStore initialization", 
+                   storage_path=str(self.storage_path),
+                   is_streamlit_cloud=env_info["is_streamlit_cloud"],
+                   cwd=env_info["current_working_directory"])
+        
+        # Create parent directories
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
         
         # Initialize storage file if it doesn't exist
         if not self.storage_path.exists():
             self._write_users({})
             logger.info(f"Initialized user storage at {self.storage_path}")
+        else:
+            logger.info(f"Using existing user storage at {self.storage_path}")
     
     def _read_users(self) -> Dict[str, Dict[str, Any]]:
         """Read users from storage with file locking"""

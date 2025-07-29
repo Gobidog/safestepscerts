@@ -7,39 +7,34 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 
+# Import centralized environment detection
+from utils.environment import is_streamlit_cloud, get_jwt_secret, get_environment_info
+
 
 def validate_environment():
     """Validate that required environment variables are present with user-friendly messages"""
-    # Detect if we're running on Streamlit Cloud
-    is_streamlit_cloud = os.path.exists("/mount/src") or os.getcwd().startswith("/mount/src")
-    
-    if is_streamlit_cloud:
-        # On Streamlit Cloud, automatically generate a deterministic JWT_SECRET
-        # This is acceptable for a demo app
-        return True
-    else:
-        # For local development, check both
-        try:
-            import streamlit as st
-            # Check Streamlit secrets first
-            if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
-                jwt_secret = st.secrets["JWT_SECRET"]
-                if jwt_secret and jwt_secret.strip():
-                    return True
-        except:
-            pass
+    try:
+        # Use centralized environment detection to validate JWT secret
+        jwt_secret = get_jwt_secret()
         
-        # Check environment variable for local dev
-        jwt_secret = os.getenv("JWT_SECRET")
-        if jwt_secret and jwt_secret.strip():
-            return True
-    
-    # If we get here, JWT_SECRET is missing or empty
-    missing = ['JWT_SECRET']
-    error_msg = f"""
+        # Log environment information for debugging
+        env_info = get_environment_info()
+        import structlog
+        logger = structlog.get_logger()
+        logger.info("Environment validation successful", 
+                   is_streamlit_cloud=env_info["is_streamlit_cloud"],
+                   has_jwt_secret=bool(jwt_secret))
+        
+        return True
+        
+    except EnvironmentError as e:
+        # Re-raise with additional context for user-friendly error messages
+        env_info = get_environment_info()
+        
+        error_msg = f"""
 🚨 Environment Configuration Error:
 
-Missing required environment variables: {missing}
+{str(e)}
 
 📋 Quick Setup Guide:
 1. Generate a secure JWT_SECRET:
@@ -53,23 +48,22 @@ Missing required environment variables: {missing}
 
 Need help? Check the documentation or contact your administrator.
         """
-    
-    # Add platform-specific instructions
-    if is_streamlit_cloud:
-        error_msg += "\n\n📱 **Streamlit Cloud Instructions:**\n"
-        error_msg += "1. Go to your app dashboard at share.streamlit.io\n"
-        error_msg += "2. Click on your app settings (⋮ menu → Settings)\n"
-        error_msg += "3. Navigate to 'Secrets' in the left sidebar\n"
-        error_msg += "4. Add the following line:\n"
-        error_msg += "   JWT_SECRET = \"your-generated-secret-here\"\n"
-        error_msg += "5. Save and reboot the app\n\n"
-        error_msg += "⚠️ Note: Environment variables do NOT work on Streamlit Cloud. You MUST use Secrets."
-    else:
-        error_msg += "\n\n💻 **Local Development:**\n"
-        error_msg += "Set JWT_SECRET in your .env file or as an environment variable."
-    
-    raise EnvironmentError(error_msg.strip())
-    return True
+        
+        # Add platform-specific instructions
+        if env_info["is_streamlit_cloud"]:
+            error_msg += "\n\n📱 **Streamlit Cloud Instructions:**\n"
+            error_msg += "1. Go to your app dashboard at share.streamlit.io\n"
+            error_msg += "2. Click on your app settings (⋮ menu → Settings)\n"
+            error_msg += "3. Navigate to 'Secrets' in the left sidebar\n"
+            error_msg += "4. Add the following line:\n"
+            error_msg += "   JWT_SECRET = \"your-generated-secret-here\"\n"
+            error_msg += "5. Save and reboot the app\n\n"
+            error_msg += "⚠️ Note: Environment variables do NOT work on Streamlit Cloud. You MUST use Secrets."
+        else:
+            error_msg += "\n\n💻 **Local Development:**\n"
+            error_msg += "Set JWT_SECRET in your .env file or as an environment variable."
+        
+        raise EnvironmentError(error_msg.strip())
 
 
 def get_environment_health() -> dict:
@@ -80,38 +74,21 @@ def get_environment_health() -> dict:
         "warnings": []
     }
     
+    # Use centralized environment detection
+    env_info = get_environment_info()
+    is_cloud = env_info["is_streamlit_cloud"]
+    
     # Check JWT_SECRET (from Streamlit secrets or environment)
     jwt_secret = None
-    is_streamlit_cloud = os.path.exists("/mount/src") or os.getcwd().startswith("/mount/src")
     
-    if is_streamlit_cloud:
-        # On Streamlit Cloud, JWT_SECRET is automatically generated if not provided
-        try:
-            import streamlit as st
-            import hashlib
-            if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
-                jwt_secret = st.secrets["JWT_SECRET"]
-            if not jwt_secret or not jwt_secret.strip():
-                # Will be auto-generated
-                stable_seed = "SafeSteps-Certificate-Generator-2024-Streamlit-Cloud"
-                jwt_secret = hashlib.sha256(stable_seed.encode()).hexdigest()
-        except:
-            import hashlib
-            stable_seed = "SafeSteps-Certificate-Generator-2024-Streamlit-Cloud"
-            jwt_secret = hashlib.sha256(stable_seed.encode()).hexdigest()
-    else:
-        # For local development, check both
-        try:
-            import streamlit as st
-            if hasattr(st, 'secrets') and 'JWT_SECRET' in st.secrets:
-                jwt_secret = st.secrets["JWT_SECRET"]
-            if not jwt_secret or not jwt_secret.strip():
-                jwt_secret = os.getenv("JWT_SECRET")
-        except:
-            jwt_secret = os.getenv("JWT_SECRET")
+    try:
+        # Use centralized JWT secret handling
+        jwt_secret = get_jwt_secret()
+    except EnvironmentError:
+        jwt_secret = None
     
     if not jwt_secret or not jwt_secret.strip():
-        if not is_streamlit_cloud:
+        if not is_cloud:
             health["status"] = "critical"
             health["issues"].append("JWT_SECRET not set - sessions will not work")
     elif len(jwt_secret) < 32:
@@ -147,41 +124,50 @@ class AuthConfig:
     
     def __post_init__(self):
         """Initialize passwords from Streamlit secrets or environment variables"""
-        is_streamlit_cloud = os.path.exists("/mount/src") or os.getcwd().startswith("/mount/src")
+        # Use centralized environment detection
+        env_info = get_environment_info()
+        is_cloud = env_info["is_streamlit_cloud"]
         
-        if is_streamlit_cloud:
-            # On Streamlit Cloud, generate deterministic JWT_SECRET if not provided
+        if is_cloud:
+            # On Streamlit Cloud, use secrets and generate deterministic JWT_SECRET if not provided
             try:
                 import streamlit as st
-                import hashlib
                 
                 if hasattr(st, 'secrets'):
                     self.user_password = st.secrets.get("USER_PASSWORD", "SafeSteps2024!")
                     self.admin_password = st.secrets.get("ADMIN_PASSWORD", "Admin@SafeSteps2024")
-                    jwt_from_secrets = st.secrets.get("JWT_SECRET", "")
                     
-                    if jwt_from_secrets and jwt_from_secrets.strip():
-                        self.jwt_secret = jwt_from_secrets
-                    else:
-                        # Generate deterministic JWT_SECRET for Streamlit Cloud
-                        # Use app name and a stable seed to generate a consistent secret
+                    # Use centralized JWT secret handling
+                    try:
+                        self.jwt_secret = get_jwt_secret()
+                    except EnvironmentError:
+                        # Fallback to deterministic secret generation
                         stable_seed = "SafeSteps-Certificate-Generator-2024-Streamlit-Cloud"
                         self.jwt_secret = hashlib.sha256(stable_seed.encode()).hexdigest()
                 else:
                     # Use defaults if secrets not available
                     self.user_password = "SafeSteps2024!"
                     self.admin_password = "Admin@SafeSteps2024"
-                    # Generate deterministic JWT_SECRET
-                    stable_seed = "SafeSteps-Certificate-Generator-2024-Streamlit-Cloud"
-                    self.jwt_secret = hashlib.sha256(stable_seed.encode()).hexdigest()
-            except:
+                    # Use centralized JWT secret handling
+                    try:
+                        self.jwt_secret = get_jwt_secret()
+                    except EnvironmentError:
+                        stable_seed = "SafeSteps-Certificate-Generator-2024-Streamlit-Cloud"
+                        self.jwt_secret = hashlib.sha256(stable_seed.encode()).hexdigest()
+            except Exception as e:
                 # Use defaults on error
-                import hashlib
+                import structlog
+                logger = structlog.get_logger()
+                logger.warning(f"Error loading Streamlit Cloud configuration: {e}")
+                
                 self.user_password = "SafeSteps2024!"
                 self.admin_password = "Admin@SafeSteps2024"
-                # Generate deterministic JWT_SECRET
-                stable_seed = "SafeSteps-Certificate-Generator-2024-Streamlit-Cloud"
-                self.jwt_secret = hashlib.sha256(stable_seed.encode()).hexdigest()
+                # Use centralized JWT secret handling
+                try:
+                    self.jwt_secret = get_jwt_secret()
+                except EnvironmentError:
+                    stable_seed = "SafeSteps-Certificate-Generator-2024-Streamlit-Cloud"
+                    self.jwt_secret = hashlib.sha256(stable_seed.encode()).hexdigest()
         else:
             # For local development, try st.secrets first, then environment
             try:
@@ -190,14 +176,36 @@ class AuthConfig:
                 if hasattr(st, 'secrets'):
                     self.user_password = st.secrets.get("USER_PASSWORD", "") or os.getenv("USER_PASSWORD", "SafeSteps2024!")
                     self.admin_password = st.secrets.get("ADMIN_PASSWORD", "") or os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
-                    self.jwt_secret = st.secrets.get("JWT_SECRET", "") or os.getenv("JWT_SECRET", "")
+                    
+                    # Use centralized JWT secret handling
+                    try:
+                        self.jwt_secret = get_jwt_secret()
+                    except EnvironmentError:
+                        self.jwt_secret = ""
                 else:
-                    raise AttributeError("No secrets")
-            except:
+                    # Fallback to environment variables only
+                    self.user_password = os.getenv("USER_PASSWORD", "SafeSteps2024!")
+                    self.admin_password = os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
+                    
+                    # Use centralized JWT secret handling
+                    try:
+                        self.jwt_secret = get_jwt_secret()
+                    except EnvironmentError:
+                        self.jwt_secret = ""
+            except Exception as e:
                 # Fallback to environment variables only
+                import structlog
+                logger = structlog.get_logger()
+                logger.warning(f"Error loading local development configuration: {e}")
+                
                 self.user_password = os.getenv("USER_PASSWORD", "SafeSteps2024!")
                 self.admin_password = os.getenv("ADMIN_PASSWORD", "Admin@SafeSteps2024")
-                self.jwt_secret = os.getenv("JWT_SECRET", "")
+                
+                # Use centralized JWT secret handling
+                try:
+                    self.jwt_secret = get_jwt_secret()
+                except EnvironmentError:
+                    self.jwt_secret = ""
 
 
 @dataclass
