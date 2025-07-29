@@ -32,8 +32,7 @@ def create_basic_certificate_template(output_path: str = "sample_certificate_tem
         "Certificate of Completion",
         fontsize=32,
         fontname="helvetica-bold",
-        color=(0.012, 0.165, 0.318),  # SafeSteps primary color
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.012, 0.165, 0.318)  # SafeSteps primary color
     )
     
     # Add subtitle
@@ -43,8 +42,7 @@ def create_basic_certificate_template(output_path: str = "sample_certificate_tem
         "This is to certify that",
         fontsize=18,
         fontname="helvetica",
-        color=(0.3, 0.3, 0.3),
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.3, 0.3, 0.3)
     )
     
     # Add form fields
@@ -84,8 +82,7 @@ def create_basic_certificate_template(output_path: str = "sample_certificate_tem
         "has successfully completed the",
         fontsize=16,
         fontname="helvetica",
-        color=(0.3, 0.3, 0.3),
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.3, 0.3, 0.3)
     )
     
     # Add course name placeholder
@@ -95,8 +92,7 @@ def create_basic_certificate_template(output_path: str = "sample_certificate_tem
         "SafeSteps Training Program",
         fontsize=22,
         fontname="helvetica-bold",
-        color=(0.012, 0.165, 0.318),
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.012, 0.165, 0.318)
     )
     
     # Add date field
@@ -122,8 +118,7 @@ def create_basic_certificate_template(output_path: str = "sample_certificate_tem
         "Date",
         fontsize=12,
         fontname="helvetica",
-        color=(0.5, 0.5, 0.5),
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.5, 0.5, 0.5)
     )
     
     # Add organization name at bottom
@@ -133,8 +128,7 @@ def create_basic_certificate_template(output_path: str = "sample_certificate_tem
         "SafeSteps Organization",
         fontsize=16,
         fontname="helvetica-bold",
-        color=(0.012, 0.165, 0.318),
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.012, 0.165, 0.318)
     )
     
     # Save the document
@@ -165,7 +159,7 @@ def create_advanced_certificate_template(output_path: str = "advanced_certificat
     logo_rect = fitz.Rect(80, 80, 180, 140)
     page.draw_rect(logo_rect, color=(0.012, 0.165, 0.318), fill=(0.95, 0.95, 0.95))
     logo_point = fitz.Point(130, 115)
-    page.insert_text(logo_point, "LOGO", fontsize=20, color=(0.5, 0.5, 0.5), align=fitz.TEXT_ALIGN_CENTER)
+    page.insert_text(logo_point, "LOGO", fontsize=20, color=(0.5, 0.5, 0.5))
     
     # Add title
     title_point = fitz.Point(396, 120)
@@ -174,8 +168,7 @@ def create_advanced_certificate_template(output_path: str = "advanced_certificat
         "Certificate of Achievement",
         fontsize=36,
         fontname="helvetica-bold",
-        color=(0.012, 0.165, 0.318),
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.012, 0.165, 0.318)
     )
     
     # Add decorative line
@@ -188,8 +181,7 @@ def create_advanced_certificate_template(output_path: str = "advanced_certificat
         "This certifies that",
         fontsize=16,
         fontname="helvetica-oblique",
-        color=(0.4, 0.4, 0.4),
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.4, 0.4, 0.4)
     )
     
     # Add name fields side by side
@@ -231,8 +223,7 @@ def create_advanced_certificate_template(output_path: str = "advanced_certificat
         "has successfully completed all requirements for",
         fontsize=14,
         fontname="helvetica",
-        color=(0.3, 0.3, 0.3),
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.3, 0.3, 0.3)
     )
     
     # Add course/program field
@@ -256,15 +247,14 @@ def create_advanced_certificate_template(output_path: str = "advanced_certificat
         "Demonstrating proficiency in safety protocols and best practices",
         fontsize=12,
         fontname="helvetica-oblique",
-        color=(0.5, 0.5, 0.5),
-        align=fitz.TEXT_ALIGN_CENTER
+        color=(0.5, 0.5, 0.5)
     )
     
     # Add signature section
     # Instructor signature line
     page.draw_line(fitz.Point(150, 480), fitz.Point(350, 480), color=(0.6, 0.6, 0.6), width=1)
     inst_label = fitz.Point(250, 495)
-    page.insert_text(inst_label, "Instructor", fontsize=10, color=(0.5, 0.5, 0.5), align=fitz.TEXT_ALIGN_CENTER)
+    page.insert_text(inst_label, "Instructor", fontsize=10, color=(0.5, 0.5, 0.5))
     
     # Date line
     page.draw_line(fitz.Point(442, 480), fitz.Point(642, 480), color=(0.6, 0.6, 0.6), width=1)
@@ -283,7 +273,7 @@ def create_advanced_certificate_template(output_path: str = "advanced_certificat
     page.add_widget(date_widget)
     
     date_label = fitz.Point(542, 495)
-    page.insert_text(date_label, "Date", fontsize=10, color=(0.5, 0.5, 0.5), align=fitz.TEXT_ALIGN_CENTER)
+    page.insert_text(date_label, "Date", fontsize=10, color=(0.5, 0.5, 0.5))
     
     # Add certificate ID field
     cert_id_rect = fitz.Rect(600, 540, 740, 560)
@@ -301,7 +291,7 @@ def create_advanced_certificate_template(output_path: str = "advanced_certificat
     
     # Add certificate ID label
     cert_label = fitz.Point(590, 555)
-    page.insert_text(cert_label, "Certificate #", fontsize=8, color=(0.7, 0.7, 0.7), align=fitz.TEXT_ALIGN_RIGHT)
+    page.insert_text(cert_label, "Certificate #", fontsize=8, color=(0.7, 0.7, 0.7))
     
     # Save the document
     doc.save(output_path)
@@ -326,8 +316,7 @@ def create_minimal_template(output_path: str = "minimal_certificate_template.pdf
         title_point,
         "Certificate",
         fontsize=48,
-        fontname="helvetica-bold",
-        align=fitz.TEXT_ALIGN_CENTER
+        fontname="helvetica-bold"
     )
     
     # Add full name field (single field for both names)

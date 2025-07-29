@@ -44,6 +44,7 @@ from utils.auth import (
 from utils.validators import SpreadsheetValidator
 from utils.pdf_generator import PDFGenerator
 from utils.storage import StorageManager
+from utils.deployment_info import get_deployment_info
 from config import config
 
 # Initialize storage manager
@@ -1733,43 +1734,33 @@ def render_admin_certificate_generation():
 
 def render_admin_progress_bar(current_step):
     """Render progress bar for admin workflow"""
-    st.markdown("""
-    <div class="progress-container">
-        <div class="progress-step active" data-step="1">
-            <div class="step-number">1</div>
-            <div class="step-label">Upload Data</div>
-        </div>
-        <div class="progress-line"></div>
-        <div class="progress-step" data-step="2">
-            <div class="step-number">2</div>
-            <div class="step-label">Validate</div>
-        </div>
-        <div class="progress-line"></div>
-        <div class="progress-step" data-step="3">
-            <div class="step-number">3</div>
-            <div class="step-label">Template</div>
-        </div>
-        <div class="progress-line"></div>
-        <div class="progress-step" data-step="4">
-            <div class="step-number">4</div>
-            <div class="step-label">Generate</div>
-        </div>
-        <div class="progress-line"></div>
-        <div class="progress-step" data-step="5">
-            <div class="step-number">5</div>
-            <div class="step-label">Complete</div>
-        </div>
-    </div>
+    steps = [
+        ("Upload Data", 1),
+        ("Validate", 2),
+        ("Template", 3),
+        ("Generate", 4),
+        ("Complete", 5)
+    ]
     
-    <style>
-    .progress-step.active { color: var(--accent-color); font-weight: 600; }
-    .progress-step[data-step="%d"] { color: var(--accent-color); font-weight: 600; }
-    .progress-step[data-step="%d"] .step-number { 
-        background-color: var(--accent-color); 
-        color: white; 
-    }
-    </style>
-    """ % (current_step, current_step), unsafe_allow_html=True)
+    progress_html = '<div class="progress-container">'
+    
+    for label, step_num in steps:
+        if step_num < current_step:
+            status = "completed"
+        elif step_num == current_step:
+            status = "active"
+        else:
+            status = ""
+            
+        progress_html += f'''
+        <div class="progress-step {status}">
+            <div class="progress-circle">{step_num}</div>
+            <div class="progress-label">{label}</div>
+        </div>
+        '''
+    
+    progress_html += '</div>'
+    st.markdown(progress_html, unsafe_allow_html=True)
 
 
 def admin_step1_upload():
@@ -2124,6 +2115,11 @@ def main():
     # Initialize session state for navigation
     if 'current_page' not in st.session_state:
         st.session_state.current_page = None
+    
+    # Display deployment info in sidebar
+    with st.sidebar:
+        deployment_info = get_deployment_info()
+        st.caption(f"Version: {deployment_info['commit']} | Env: {deployment_info['environment']}")
     
     # Check authentication and determine available pages
     if not is_session_valid():

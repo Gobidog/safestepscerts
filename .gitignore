@@ -246,3 +246,10 @@ data/storage/*.json
 !data/storage/.gitkeep
 data/templates/*
 !data/templates/.gitkeep
+
+# Deployment and monitoring artifacts
+deployment_success_report.md
+monitor_deployment.py
+test_participants.csv
+test_report_streamlit_cloud.md
+utils/add_form_fields_to_pdf.py
