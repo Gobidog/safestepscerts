@@ -37,8 +37,8 @@ As an administrator, you have full access to all user features plus additional c
 1. Navigate to the application URL
 2. Click "Login" in the sidebar
 3. Enter admin credentials:
-   - **Username**: `admin`
-   - **Password**: Your admin password
+   - **Username**: `admin` or `admin@safesteps.local`
+   - **Password**: `Admin@SafeSteps2024` (local) or `Gobi2004!` (cloud)
 4. After login, you'll see "Admin Panel" in the sidebar
 5. Click to access administrative features
 

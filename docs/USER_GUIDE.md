@@ -25,8 +25,8 @@ The Certificate Generator is a web-based application that allows you to create p
 1. Navigate to the Certificate Generator URL
 2. Click on "Login" in the sidebar
 3. Enter your credentials:
-   - **Username**: `user`
-   - **Password**: Your user password (provided by admin)
+   - **Username**: `testuser` or `testuser@safesteps.local`
+   - **Password**: `UserPass123` (local) or `Safesteps!` (cloud)
 4. Click "Login" button
 5. You'll see a success message and can now access the Generate page
 

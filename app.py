@@ -45,7 +45,9 @@ from utils.validators import SpreadsheetValidator
 from utils.pdf_generator import PDFGenerator
 from utils.storage import StorageManager
 from utils.deployment_info import get_deployment_info
+from utils.ui_components import apply_custom_css, create_progress_steps, COLORS
 from config import config
+import time
 
 # Initialize storage manager
 storage = StorageManager()
@@ -377,34 +379,68 @@ st.markdown("""
 
 
 def render_progress_bar(current_step: int):
-    """Render horizontal progress bar for workflow"""
+    """Render horizontal progress bar for workflow using Streamlit native components"""
     steps = [
-        ("Upload", 1),
-        ("Validate", 2),
-        ("Template", 3),
-        ("Generate", 4),
-        ("Complete", 5)
+        ("Upload", "📤", 1),
+        ("Validate", "✅", 2),
+        ("Template", "📄", 3),
+        ("Generate", "🏆", 4),
+        ("Complete", "🎉", 5)
     ]
     
-    progress_html = '<div class="progress-container">'
+    # Create columns for steps
+    cols = st.columns(len(steps))
     
-    for label, step_num in steps:
-        if step_num < current_step:
-            status = "completed"
-        elif step_num == current_step:
-            status = "active"
-        else:
-            status = ""
+    for idx, (label, icon, step_num) in enumerate(steps):
+        with cols[idx]:
+            # Determine step status
+            if step_num < current_step:
+                status_color = "#9ACA3C"  # Green for completed
+                status_text = "✓"
+                container_style = "background-color: #f0f8e8; border: 2px solid #9ACA3C;"
+            elif step_num == current_step:
+                status_color = "#032A51"  # Blue for active
+                status_text = str(step_num)
+                container_style = "background-color: #e8f0f8; border: 2px solid #032A51;"
+            else:
+                status_color = "#E1E8ED"  # Gray for pending
+                status_text = str(step_num)
+                container_style = "background-color: #f5f7fa; border: 2px solid #E1E8ED;"
             
-        progress_html += f'''
-        <div class="progress-step {status}">
-            <div class="progress-circle">{step_num}</div>
-            <div class="progress-label">{label}</div>
-        </div>
-        '''
-    
-    progress_html += '</div>'
-    st.markdown(progress_html, unsafe_allow_html=True)
+            # Create step container
+            st.markdown(f"""
+            <div style="text-align: center; padding: 10px; border-radius: 10px; {container_style}">
+                <div style="font-size: 24px; margin-bottom: 5px;">{icon}</div>
+                <div style="
+                    width: 40px; 
+                    height: 40px; 
+                    border-radius: 50%; 
+                    background-color: {status_color}; 
+                    color: white; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    margin: 0 auto 8px; 
+                    font-weight: bold;
+                ">{status_text}</div>
+                <div style="font-size: 14px; font-weight: 600; color: {status_color};">{label}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Add connecting line (except for last step)
+            if idx < len(steps) - 1:
+                line_color = "#9ACA3C" if step_num < current_step else "#E1E8ED"
+                st.markdown(f"""
+                <div style="
+                    position: relative;
+                    top: -60px;
+                    left: 50%;
+                    width: 100%;
+                    height: 2px;
+                    background-color: {line_color};
+                    z-index: -1;
+                "></div>
+                """, unsafe_allow_html=True)
 
 
 def login_page():
@@ -475,15 +511,22 @@ def login_page():
     </div>
     """, unsafe_allow_html=True)
     
-    # Center the form
+    # Login form with enhanced styling
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Show system status indicator
-        if env_health["status"] == "healthy":
-            st.success("🟢 System Ready")
+        # Login card
+        st.markdown(f"""
+        <div style="
+            background-color: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid {COLORS['border']};
+        ">
+        """, unsafe_allow_html=True)
         
-        with st.form("login_form"):
+        with st.form("login_form", clear_on_submit=False):
             username_or_email = st.text_input(
                 "Username or Email",
                 placeholder="Enter your username or email",
@@ -639,7 +682,9 @@ Test User Login:
 
 
 def user_workflow():
-    """Main user workflow with 5 steps"""
+    """Main user workflow with enhanced UI"""
+    from utils.ui_components import create_header, create_card
+    
     # Initialize workflow state
     if 'workflow_step' not in st.session_state:
         st.session_state.workflow_step = 1
@@ -651,18 +696,20 @@ def user_workflow():
     # Get current user
     user = get_current_user()
     
-    # Header
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([3, 1, 1])
+    # Enhanced header
+    col1, col2 = st.columns([5, 1])
     with col1:
-        st.title("Generate Certificates")
+        create_header(
+            "Certificate Generator",
+            "Follow the steps below to generate your certificates",
+            user
+        )
     with col2:
-        st.markdown(f"**User:** {user['username']}")
-    with col3:
-        if st.button("Logout", type="secondary"):
+        st.markdown("<div style='padding-top: 20px;'>", unsafe_allow_html=True)
+        if st.button("🚪 Logout", use_container_width=True):
             logout()
             st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     
     # Progress bar
     render_progress_bar(st.session_state.workflow_step)
@@ -681,15 +728,41 @@ def user_workflow():
 
 
 def step1_upload():
-    """Step 1: File Upload"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header("Step 1: Upload Your Data")
+    """Step 1: File Upload with enhanced UI"""
+    from utils.ui_components import create_card, COLORS
     
-    st.markdown("""
-    <div class="upload-zone">
-        <h3>📁 Drag and drop your file here</h3>
-        <p style="color: var(--text-secondary); margin: 16px 0;">or click to browse</p>
-        <p style="font-size: 14px; color: var(--text-secondary);">Supported formats: CSV, Excel (.xlsx, .xls)</p>
+    st.markdown(f"""
+    <div class="ui-card fade-in">
+        <h2 style="margin-top: 0; color: {COLORS['text_primary']};">Step 1: Upload Your Data</h2>
+        <p style="color: {COLORS['text_secondary']}; margin-bottom: 24px;">Upload a spreadsheet containing participant names</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Enhanced upload zone
+    st.markdown(f"""
+    <div style="
+        border: 3px dashed {COLORS['border']};
+        border-radius: 16px;
+        padding: 48px;
+        text-align: center;
+        background: linear-gradient(135deg, {COLORS['background']} 0%, white 100%);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    " onmouseover="this.style.borderColor='{COLORS['primary']}'; this.style.transform='scale(1.02)'" 
+       onmouseout="this.style.borderColor='{COLORS['border']}'; this.style.transform='scale(1)'">
+        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.6;">📁</div>
+        <h3 style="color: {COLORS['text_primary']}; margin-bottom: 8px;">Drop your file here</h3>
+        <p style="color: {COLORS['text_secondary']}; margin-bottom: 16px;">or click to browse</p>
+        <div style="
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: {COLORS['background']};
+            border-radius: 20px;
+            font-size: 12px;
+            color: {COLORS['text_secondary']};
+        ">
+            <strong>Supported:</strong> CSV, Excel (.xlsx, .xls)
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -708,14 +781,18 @@ def step1_upload():
             if st.button("Continue", type="primary", use_container_width=True):
                 st.session_state.workflow_step = 2
                 st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def step2_validate():
     """Step 2: Data Validation with enhanced feedback"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header("Step 2: Validate Your Data")
+    from utils.ui_components import create_card, create_loading_animation, COLORS
+    
+    st.markdown(f"""
+    <div class="ui-card fade-in">
+        <h2 style="margin-top: 0; color: {COLORS['text_primary']};">Step 2: Validate Your Data</h2>
+        <p style="color: {COLORS['text_secondary']}; margin-bottom: 24px;">Checking your file for required information</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     if not st.session_state.uploaded_file:
         st.error("📁 **No file uploaded**: Please go back to Step 1 to upload your data file.")
@@ -853,14 +930,18 @@ def step2_validate():
         with col2:
             if st.button("🔄 Try Again", use_container_width=True):
                 st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def step3_template():
-    """Step 3: Template Selection with enhanced validation"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header("Step 3: Choose a Template")
+    """Step 3: Template Selection with enhanced UI"""
+    from utils.ui_components import create_card, create_empty_state, COLORS
+    
+    st.markdown(f"""
+    <div class="ui-card fade-in">
+        <h2 style="margin-top: 0; color: {COLORS['text_primary']};">Step 3: Choose a Template</h2>
+        <p style="color: {COLORS['text_secondary']}; margin-bottom: 24px;">Select a certificate design for your participants</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Get available templates from storage
     try:
@@ -1040,14 +1121,18 @@ def step3_template():
         with col2:
             if st.button("🔄 Retry", use_container_width=True):
                 st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def step4_generate():
-    """Step 4: Generate Certificates"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header("Step 4: Generate Certificates")
+    """Step 4: Generate Certificates with enhanced UI"""
+    from utils.ui_components import create_card, COLORS
+    
+    st.markdown(f"""
+    <div class="ui-card fade-in">
+        <h2 style="margin-top: 0; color: {COLORS['text_primary']};">Step 4: Generate Certificates</h2>
+        <p style="color: {COLORS['text_secondary']}; margin-bottom: 24px;">Ready to create your certificates</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     if not st.session_state.validated_data.empty and st.session_state.selected_template:
         # Get template info for display
@@ -1151,19 +1236,21 @@ def step4_generate():
         if st.button("Go Back"):
             st.session_state.workflow_step = 3
             st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def step5_complete():
-    """Step 5: Download Complete"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    """Step 5: Download Complete with enhanced celebration"""
+    from utils.ui_components import COLORS
     
-    st.markdown("""
-    <div style="text-align: center; padding: 40px;">
-        <div style="font-size: 72px; color: var(--accent-color); margin-bottom: 24px;">✅</div>
-        <h1>Certificates Generated Successfully!</h1>
-        <p style="font-size: 18px; color: var(--text-secondary); margin: 16px 0;">
+    st.markdown(f"""
+    <div class="ui-card fade-in" style="text-align: center; padding: 60px;">
+        <div style="
+            font-size: 80px; 
+            margin-bottom: 24px;
+            animation: pulse 2s infinite;
+        ">🎉</div>
+        <h1 style="color: {COLORS['text_primary']}; margin-bottom: 16px;">Certificates Generated Successfully!</h1>
+        <p style="font-size: 18px; color: {COLORS['text_secondary']}; margin-bottom: 32px;">
             All certificates have been generated and are ready for download.
         </p>
     </div>
@@ -1200,8 +1287,6 @@ def step5_complete():
                 st.session_state.selected_template = None
                 st.session_state.generated_files = []
                 st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def logout_action():
@@ -1310,11 +1395,49 @@ def render_dashboard():
 
 
 def render_templates_page():
-    """Render templates management page with full functionality"""
-    st.title("Template Management")
+    """Render templates management page with enhanced UI/UX"""
+    from utils.ui_components import (
+        create_header, create_card, create_empty_state,
+        create_status_badge, create_action_menu, COLORS
+    )
     
-    # Upload new template section
-    with st.expander("📤 Upload New Template", expanded=False):
+    create_header(
+        "Template Management",
+        "Upload and manage certificate templates",
+        get_current_user()
+    )
+    
+    # Quick actions bar
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        search_query = st.text_input(
+            "Search templates",
+            placeholder="🔍 Search by name or description...",
+            label_visibility="collapsed"
+        )
+    with col2:
+        if st.button("📤 Upload Template", type="primary", use_container_width=True):
+            st.session_state.show_upload_form = True
+    with col3:
+        if st.button("🔍 Validate PDF", use_container_width=True):
+            st.session_state.show_validate_form = True
+    
+    # Upload new template modal
+    if st.session_state.get('show_upload_form', False):
+        with st.container():
+            st.markdown(f"""
+            <div style="
+                background-color: white;
+                border-radius: 12px;
+                padding: 24px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                border: 1px solid {COLORS['border']};
+                margin-bottom: 20px;
+            ">
+            """, unsafe_allow_html=True)
+            
+            st.subheader("📤 Upload New Template")
+            st.caption("Add a new certificate template to your library")
         with st.form("upload_template_form"):
             uploaded_template = st.file_uploader(
                 "Choose a PDF template",
@@ -1342,7 +1465,15 @@ def render_templates_page():
                 help="Optional description to help users choose the right template"
             )
             
-            submit_button = st.form_submit_button("💾 Save Template", type="primary")
+            col_submit, col_cancel = st.columns(2)
+            with col_submit:
+                submit_button = st.form_submit_button("💾 Save Template", type="primary", use_container_width=True)
+            with col_cancel:
+                cancel_button = st.form_submit_button("Cancel", use_container_width=True)
+            
+            if cancel_button:
+                st.session_state.show_upload_form = False
+                st.rerun()
             
             if submit_button and uploaded_template:
                 if not template_name:
@@ -1366,18 +1497,36 @@ def render_templates_page():
                         }
                         
                         # Save template using storage manager
-                        if storage.save_template(uploaded_template, template_filename, metadata):
-                            st.success(f"✅ Template '{template_name}' uploaded successfully!")
-                            st.rerun()
-                        else:
-                            st.error("Failed to save template. Please try again.")
+                        with st.spinner("Uploading template..."):
+                            if storage.save_template(uploaded_template, template_filename, metadata):
+                                st.success(f"✅ Template '{template_name}' uploaded successfully!")
+                                st.session_state.show_upload_form = False
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error("Failed to save template. Please try again.")
                             
                     except Exception as e:
                         st.error(f"Error uploading template: {str(e)}")
                         logger.error(f"Template upload error: {e}")
     
-    # Template validation tool
-    with st.expander("🔍 Validate Template", expanded=False):
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Template validation modal
+    if st.session_state.get('show_validate_form', False):
+        with st.container():
+            st.markdown(f"""
+            <div style="
+                background-color: white;
+                border-radius: 12px;
+                padding: 24px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                border: 1px solid {COLORS['border']};
+                margin-bottom: 20px;
+            ">
+            """, unsafe_allow_html=True)
+            
+            st.subheader("🔍 Validate PDF Template")
         st.info("Upload a PDF to check if it has the required form fields")
         test_template = st.file_uploader(
             "Choose a PDF to validate",
@@ -1424,19 +1573,135 @@ def render_templates_page():
                         
             except Exception as e:
                 st.error(f"Error validating template: {str(e)}")
+            
+            if st.button("Close", use_container_width=True):
+                st.session_state.show_validate_form = False
+                st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
     
     # Existing templates section
-    st.subheader("📄 Existing Templates")
+    st.markdown("<h3 style='margin-top: 30px;'>📄 Template Library</h3>", unsafe_allow_html=True)
     
     try:
         # Get actual templates from storage
         templates = storage.list_templates()
         
+        # Filter templates based on search
+        if search_query:
+            templates = [
+                t for t in templates 
+                if search_query.lower() in t.get('display_name', t.get('name', '')).lower() 
+                or search_query.lower() in t.get('description', '').lower()
+            ]
+        
         if not templates:
-            st.info("No templates uploaded yet. Use the upload form above to add your first template.")
+            create_empty_state(
+                "📄",
+                "No templates found" if search_query else "No templates uploaded yet",
+                "Upload your first certificate template to get started" if not search_query else "Try a different search term",
+                "Upload Template" if not search_query else None,
+                lambda: st.session_state.update({'show_upload_form': True}) if not search_query else None
+            )
         else:
-            # Display templates in a nice grid
-            for template in templates:
+            # Template grid view
+            cols_per_row = 3
+            for i in range(0, len(templates), cols_per_row):
+                cols = st.columns(cols_per_row)
+                
+                for j, template in enumerate(templates[i:i+cols_per_row]):
+                    with cols[j]:
+                        # Template card
+                        display_name = template.get('display_name', template.get('name', 'Unknown'))
+                        description = template.get('description', 'No description available')
+                        size_kb = template.get('size', 0) / 1024 if template.get('size') else 0
+                        
+                        st.markdown(f"""
+                        <div class="ui-card" style="height: 280px; display: flex; flex-direction: column;">
+                            <div style="flex: 1;">
+                                <h4 style="margin: 0 0 8px 0; color: {COLORS['text_primary']};">{display_name}</h4>
+                                <p style="
+                                    font-size: 14px; 
+                                    color: {COLORS['text_secondary']}; 
+                                    margin-bottom: 16px;
+                                    overflow: hidden;
+                                    text-overflow: ellipsis;
+                                    display: -webkit-box;
+                                    -webkit-line-clamp: 2;
+                                    -webkit-box-orient: vertical;
+                                ">{description}</p>
+                                
+                                <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                                    <span style="font-size: 12px; color: {COLORS['text_secondary']};">
+                                        📁 {template.get('filename', 'Unknown file')}
+                                    </span>
+                                </div>
+                                
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <span style="font-size: 12px; color: {COLORS['text_secondary']};">
+                                        💾 {size_kb:.1f} KB
+                                    </span>
+                                    {create_status_badge('Active', 'success')}
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Action buttons
+                        col_preview, col_delete = st.columns(2)
+                        
+                        with col_preview:
+                            if st.button(
+                                "👁️ Preview",
+                                key=f"preview_{template['name']}",
+                                use_container_width=True
+                            ):
+                                try:
+                                    template_path = storage.get_template_path(template['name'])
+                                    if template_path:
+                                        generator = PDFGenerator(template_path)
+                                        preview_bytes = generator.generate_preview("John", "Doe")
+                                        
+                                        st.download_button(
+                                            label="📥 Download Preview",
+                                            data=preview_bytes,
+                                            file_name=f"preview_{template['name']}",
+                                            mime="application/pdf",
+                                            key=f"download_preview_{template['name']}",
+                                            use_container_width=True
+                                        )
+                                    else:
+                                        st.error("Template file not found")
+                                except Exception as e:
+                                    st.error(f"Error: {str(e)}")
+                        
+                        with col_delete:
+                            if st.button(
+                                "🗑️ Delete",
+                                key=f"delete_{template['name']}",
+                                use_container_width=True,
+                                type="secondary"
+                            ):
+                                if st.session_state.get(f"confirm_delete_{template['name']}"):
+                                    if storage.delete_template(template['name']):
+                                        st.success(f"Template '{display_name}' deleted")
+                                        st.rerun()
+                                    else:
+                                        st.error("Failed to delete template")
+                                else:
+                                    st.session_state[f"confirm_delete_{template['name']}"] = True
+                                    st.warning("Click again to confirm deletion")
+            
+            # Summary stats
+            st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Templates", len(templates))
+            with col2:
+                total_size = sum(t.get('size', 0) for t in templates) / (1024 * 1024)
+                st.metric("Total Size", f"{total_size:.1f} MB")
+            with col3:
+                st.metric("Available Slots", "Unlimited" if len(templates) < 50 else f"{50 - len(templates)}")
                 with st.container():
                     col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
                     
@@ -1735,32 +2000,14 @@ def render_admin_certificate_generation():
 def render_admin_progress_bar(current_step):
     """Render progress bar for admin workflow"""
     steps = [
-        ("Upload Data", 1),
-        ("Validate", 2),
-        ("Template", 3),
-        ("Generate", 4),
-        ("Complete", 5)
+        ("Upload Data", "📤", 1),
+        ("Validate", "✅", 2),
+        ("Template", "📄", 3),
+        ("Generate", "🏆", 4),
+        ("Complete", "🎉", 5)
     ]
     
-    progress_html = '<div class="progress-container">'
-    
-    for label, step_num in steps:
-        if step_num < current_step:
-            status = "completed"
-        elif step_num == current_step:
-            status = "active"
-        else:
-            status = ""
-            
-        progress_html += f'''
-        <div class="progress-step {status}">
-            <div class="progress-circle">{step_num}</div>
-            <div class="progress-label">{label}</div>
-        </div>
-        '''
-    
-    progress_html += '</div>'
-    st.markdown(progress_html, unsafe_allow_html=True)
+    create_progress_steps(steps, current_step)
 
 
 def admin_step1_upload():
@@ -1793,8 +2040,6 @@ def admin_step1_upload():
         if st.button("Continue to Validation", type="primary", use_container_width=True):
             st.session_state.admin_workflow_step = 2
             st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def admin_step2_validate():
@@ -1852,8 +2097,6 @@ def admin_step2_validate():
         if st.button("← Back to Upload", use_container_width=True):
             st.session_state.admin_workflow_step = 1
             st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def admin_step3_template():
@@ -1906,8 +2149,6 @@ def admin_step3_template():
                 if st.button("Continue to Generate →", type="primary", use_container_width=True):
                     st.session_state.admin_workflow_step = 4
                     st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def admin_step4_generate():
@@ -2093,8 +2334,6 @@ def admin_step5_complete():
             # Go back to dashboard
             st.session_state.admin_workflow_step = 1
             st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def create_zip_archive(files):

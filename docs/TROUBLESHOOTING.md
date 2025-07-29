@@ -309,6 +309,8 @@ Before diving into specific issues, try these steps:
 | "Rate limit exceeded" | Too many requests | Wait 1 minute |
 | "Invalid or missing CSRF token" | Security token expired | Refresh page and retry |
 | "Please login to access this page" | Session lost or expired | Log in again |
+| "TypeError: insert_textbox() got an unexpected keyword argument 'align'" | PyMuPDF version mismatch | Update requirements.txt with PyMuPDF==1.23.26 |
+| Progress bars show HTML markup | Streamlit rendering issue | Update Streamlit version or force redeploy |
 
 ### Advanced Troubleshooting
 
@@ -382,6 +384,72 @@ Contact your admin when:
    - Update browser monthly
    - Check for announcements
 
+### Deployment Sync Issues
+
+#### Application Running Old Code on Streamlit Cloud
+**Symptoms**: Git commits successful but changes not reflected on deployed site
+
+**Solutions**:
+1. **Force redeployment**:
+   - Go to Streamlit Cloud dashboard
+   - Click three dots (⋮) → "Reboot app"
+   - Wait 2-5 minutes for deployment
+
+2. **Check deployment logs**:
+   - Click "Manage app" → "Logs"
+   - Look for error messages
+   - Verify latest commit hash
+
+3. **Pin dependencies**:
+   ```txt
+   # requirements.txt
+   streamlit==1.31.0
+   PyMuPDF==1.23.26  # Critical version
+   ```
+
+4. **If still failing**:
+   - Delete and recreate the app
+   - See [Deployment Recovery Guide](DEPLOYMENT_RECOVERY_GUIDE.md)
+
+#### PyMuPDF Align Parameter Error
+**Symptoms**: `TypeError: insert_textbox() got an unexpected keyword argument 'align'`
+
+**Cause**: PyMuPDF version incompatibility
+
+**Solution**:
+1. Pin PyMuPDF version in requirements.txt:
+   ```txt
+   PyMuPDF==1.23.26
+   ```
+2. Remove align parameter from code if present
+3. Force redeploy application
+
+#### Progress Bars Display Raw HTML
+**Symptoms**: See `<progress value="50" max="100">` instead of visual progress bar
+
+**Solutions**:
+1. Update Streamlit to 1.31.0 or higher
+2. Clear browser cache (Ctrl+F5)
+3. Use `st.progress()` instead of HTML elements
+4. Force application redeployment
+
+### Circular Import Errors
+
+#### Application Won't Start Due to Import Cycle
+**Symptoms**: `ImportError: cannot import name 'config' from partially initialized module`
+
+**Cause**: Circular dependency between config.py and utils modules
+
+**Solution**:
+1. Implement lazy imports in affected modules
+2. Move imports inside functions instead of module level
+3. Use import guards:
+   ```python
+   def get_config():
+       from config import config
+       return config
+   ```
+
 ---
 
-**Remember**: Most issues can be resolved by checking data format and following the file requirements. When in doubt, start with a small test file to verify the process works.
+**Remember**: Most issues can be resolved by checking data format and following the file requirements. When in doubt, start with a small test file to verify the process works. For deployment issues, see the [Deployment Recovery Guide](DEPLOYMENT_RECOVERY_GUIDE.md).

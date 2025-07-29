@@ -106,13 +106,21 @@ pages/
   - Support for both local and GCS storage
 - ✅ **Template Creation Utility** - Added `utils/create_sample_template.py` to generate compatible PDF templates
 - ✅ **Comprehensive Testing** - Created `test_template_system.py` for end-to-end verification
+- ✅ **Deployment Sync Fix** - Resolved Streamlit Cloud running outdated code:
+  - Pinned PyMuPDF==1.23.26 to fix align parameter error
+  - Fixed progress bar HTML rendering issues
+  - Added deployment verification system
+  - Forced cloud redeployment to sync with latest code
+- ✅ **Circular Import Resolution** - Fixed import cycle between config.py and utils/auth.py using lazy loading pattern
 
 ### 9. Dependencies
 Core dependencies (check versions with Context7):
-- streamlit >= 1.31.0
-- PyMuPDF >= 1.23.0
+- streamlit >= 1.31.0 (required for proper progress bar rendering)
+- PyMuPDF == 1.23.26 (**CRITICAL - DO NOT UPDATE** - newer versions break align parameter)
 - pandas >= 2.0.0
 - google-cloud-storage >= 2.10.0
+
+**⚠️ IMPORTANT**: Always pin PyMuPDF to version 1.23.26 in requirements.txt. Newer versions remove the align parameter from insert_textbox() causing deployment failures.
 
 ### 10. Performance Targets
 - Certificate generation: < 0.5 sec each
@@ -153,6 +161,24 @@ Before marking deployment ready:
 
 ## Emergency Contacts
 - If agents conflict: Check /tmp/claude-team/issues.md
-- If builds fail: Verify requirements.txt versions
+- If builds fail: Verify requirements.txt versions (especially PyMuPDF==1.23.26)
 - If GCS fails: Check local fallback works
 - If rate limit hit: Implement exponential backoff
+- If deployment doesn't sync: See docs/DEPLOYMENT_RECOVERY_GUIDE.md
+
+## Lessons Learned (2025-01-29)
+
+### Deployment Synchronization
+- **Problem**: Streamlit Cloud can cache old deployments even after git push
+- **Solution**: Force reboot through dashboard or add deployment markers to commits
+- **Prevention**: Include version tracking in footer, monitor deployment logs
+
+### Dependency Management
+- **Problem**: PyMuPDF updates break backward compatibility silently
+- **Solution**: Always pin exact versions for critical dependencies
+- **Prevention**: Test dependency updates in staging before production
+
+### Authentication Credentials
+- **Cloud vs Local**: Different passwords may be used on cloud deployments
+- **Documentation**: Always document both sets of credentials clearly
+- **Testing**: Verify logins work after each deployment

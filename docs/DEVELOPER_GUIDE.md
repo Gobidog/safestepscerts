@@ -47,6 +47,13 @@ DEBUG=true
 USE_LOCAL_STORAGE=true
 ```
 
+**CRITICAL Dependency Requirements:**
+```txt
+# requirements.txt - MUST pin these versions
+PyMuPDF==1.23.26  # DO NOT CHANGE - newer versions break align parameter
+streamlit>=1.31.0  # Required for proper progress bar rendering
+```
+
 5. **Run the Application**
 ```bash
 streamlit run app.py
@@ -434,6 +441,50 @@ def debug_session(session_id: str):
 
 ## Deployment Considerations
 
+### Critical Deployment Requirements
+
+**1. Pin PyMuPDF Version**
+```txt
+# requirements.txt
+PyMuPDF==1.23.26  # CRITICAL - DO NOT UPDATE
+```
+Newer versions of PyMuPDF remove the `align` parameter from `insert_textbox()`, causing deployment failures.
+
+**2. Deployment Verification System**
+
+Always include version tracking in your deployment:
+```python
+# monitor_deployment.py
+import streamlit as st
+import subprocess
+from datetime import datetime
+
+def display_deployment_info():
+    """Display deployment version in footer"""
+    try:
+        commit = subprocess.check_output(
+            ['git', 'rev-parse', 'HEAD']
+        ).decode('ascii').strip()[:8]
+    except:
+        commit = "unknown"
+    
+    st.sidebar.markdown(f"Version: {commit} | Deployed: {datetime.now()}")
+```
+
+**3. Git Commit Best Practices for Streamlit Cloud**
+```bash
+# Force deployment with meaningful commits
+git add -A
+git commit -m "Fix: [specific issue] - force redeploy"
+git push origin main
+
+# If deployment doesn't trigger, add a deployment marker
+echo "deployment_$(date +%s)" > .deployment
+git add .deployment
+git commit -m "Force deployment sync"
+git push origin main
+```
+
 ### Environment Variables
 Always use environment variables for:
 - Secrets (JWT_SECRET)
@@ -463,10 +514,24 @@ def health_check():
         "app": True,
         "user_store": UserStore().is_healthy(),
         "storage": storage_available(),
-        "templates": templates_loaded()
+        "templates": templates_loaded(),
+        "pymupdf_version": check_pymupdf_version()
     }
     return all(checks.values()), checks
+
+def check_pymupdf_version():
+    """Verify PyMuPDF version is correct"""
+    import fitz
+    return fitz.version == ('1.23.26', '1.23.26', '20240126000001')
 ```
+
+### Deployment Troubleshooting
+
+If deployment issues occur:
+1. Check the [Deployment Recovery Guide](DEPLOYMENT_RECOVERY_GUIDE.md)
+2. Verify PyMuPDF version is pinned correctly
+3. Force redeployment through Streamlit Cloud dashboard
+4. Monitor deployment logs for errors
 
 ## Contributing
 
