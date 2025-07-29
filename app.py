@@ -823,6 +823,7 @@ def step2_validate():
                     st.rerun()
                 
     except Exception as e:
+        import traceback
         progress_bar.empty()
         status_text.empty()
         
@@ -830,6 +831,8 @@ def step2_validate():
         
         with st.expander("🔧 Technical Details"):
             st.code(str(e))
+            st.text("Full traceback:")
+            st.code(traceback.format_exc())
         
         st.info("""
         🛠️ **Troubleshooting Steps**:
@@ -1671,7 +1674,13 @@ def admin_step2_validate():
                 st.rerun()
                 
     except Exception as e:
+        import traceback
         st.error(f"Error during validation: {str(e)}")
+        
+        # Show detailed traceback for debugging
+        with st.expander("🔍 Debug Information"):
+            st.code(traceback.format_exc())
+            
         if st.button("← Back to Upload", use_container_width=True):
             st.session_state.admin_workflow_step = 1
             st.rerun()
