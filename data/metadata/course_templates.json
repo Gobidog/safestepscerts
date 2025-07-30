@@ -1,0 +1,22 @@
+{
+  "course_1753909275041472": {
+    "id": "course_1753909275041472",
+    "name": "Vapes and Vaping",
+    "description": "Educational course about vaping awareness and prevention",
+    "created_by": "system",
+    "created_at": "2025-07-31T07:01:15.041474",
+    "updated_at": "2025-07-31T07:01:15.041474",
+    "usage_count": 0,
+    "last_used": null
+  },
+  "course_1753909275041617": {
+    "id": "course_1753909275041617",
+    "name": "Bullying",
+    "description": "Course on bullying prevention and awareness",
+    "created_by": "system",
+    "created_at": "2025-07-31T07:01:15.041619",
+    "updated_at": "2025-07-31T07:01:15.041619",
+    "usage_count": 0,
+    "last_used": null
+  }
+}

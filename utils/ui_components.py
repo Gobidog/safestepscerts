@@ -88,6 +88,27 @@ def apply_custom_css():
             transform: translateY(-2px);
         }
         
+        /* Course Card Specific */
+        .course-card {
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .course-card h4 {
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+        
+        .course-card p {
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+        
         /* Button Variants */
         .stButton > button {
             border-radius: 8px;
@@ -630,3 +651,124 @@ def create_action_menu(actions: List[Dict[str, any]], key_prefix: str):
             ):
                 if 'callback' in action:
                     action['callback']()
+
+def create_course_card(course: Dict[str, any], on_edit: callable = None, on_delete: callable = None):
+    """Create a course card component"""
+    st.markdown(f"""
+    <div class="ui-card course-card">
+        <h4 style="margin-bottom: 8px; color: {COLORS['primary']};">
+            {course['name']}
+        </h4>
+        <p style="color: {COLORS['text_secondary']}; font-size: 14px; margin-bottom: 16px;">
+            {course['description']}
+        </p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
+            <div>
+                <span style="font-size: 12px; color: {COLORS['text_secondary']};">
+                    📊 {course.get('usage_count', 0)} uses
+                </span>
+            </div>
+            <div>
+                <span style="font-size: 12px; color: {COLORS['text_secondary']};">
+                    Created by {course.get('created_by', 'Unknown')}
+                </span>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Action buttons
+    if on_edit or on_delete:
+        col1, col2 = st.columns(2)
+        with col1:
+            if on_edit and st.button("✏️ Edit", key=f"edit_course_{course['id']}", use_container_width=True):
+                on_edit(course)
+        with col2:
+            if on_delete:
+                # Only allow deletion of unused courses
+                if course.get('usage_count', 0) == 0:
+                    if st.button("🗑️ Delete", key=f"delete_course_{course['id']}", use_container_width=True):
+                        on_delete(course)
+                else:
+                    st.button("🔒 In Use", key=f"locked_course_{course['id']}", disabled=True, use_container_width=True)
+
+def create_course_form(course: Dict[str, any] = None, on_submit: callable = None, on_cancel: callable = None):
+    """Create a course form component for add/edit"""
+    is_edit = course is not None
+    
+    with st.form("course_form"):
+        course_name = st.text_input(
+            "Course Name",
+            value=course['name'] if is_edit else "",
+            placeholder="e.g., Digital Citizenship",
+            help="Enter a descriptive name for the course"
+        )
+        
+        course_description = st.text_area(
+            "Course Description",
+            value=course['description'] if is_edit else "",
+            placeholder="Describe what this course covers and when it should be used...",
+            help="Provide a clear description to help users understand the course content",
+            height=100
+        )
+        
+        col_submit, col_cancel = st.columns(2)
+        with col_submit:
+            submit_label = "💾 Save Changes" if is_edit else "💾 Create Course"
+            if st.form_submit_button(submit_label, type="primary", use_container_width=True):
+                if on_submit:
+                    on_submit(course_name, course_description)
+        
+        with col_cancel:
+            if st.form_submit_button("Cancel", use_container_width=True):
+                if on_cancel:
+                    on_cancel()
+
+def create_course_stats_card(stats: Dict[str, any]):
+    """Create a statistics card for courses"""
+    st.markdown(f"""
+    <div class="ui-card">
+        <h4 style="margin-bottom: 16px;">📊 Course Statistics</h4>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+            <div>
+                <p style="font-size: 32px; font-weight: 700; color: {COLORS['primary']}; margin: 0;">
+                    {stats.get('total_courses', 0)}
+                </p>
+                <p style="font-size: 14px; color: {COLORS['text_secondary']}; margin: 0;">
+                    Total Courses
+                </p>
+            </div>
+            <div>
+                <p style="font-size: 32px; font-weight: 700; color: {COLORS['accent']}; margin: 0;">
+                    {stats.get('total_usage', 0)}
+                </p>
+                <p style="font-size: 14px; color: {COLORS['text_secondary']}; margin: 0;">
+                    Total Usage
+                </p>
+            </div>
+            <div>
+                <p style="font-size: 32px; font-weight: 700; color: {COLORS['success']}; margin: 0;">
+                    {stats.get('courses_with_usage', 0)}
+                </p>
+                <p style="font-size: 14px; color: {COLORS['text_secondary']}; margin: 0;">
+                    Active Courses
+                </p>
+            </div>
+            <div>
+                <p style="font-size: 32px; font-weight: 700; color: {COLORS['warning']}; margin: 0;">
+                    {stats.get('courses_without_usage', 0)}
+                </p>
+                <p style="font-size: 14px; color: {COLORS['text_secondary']}; margin: 0;">
+                    Unused Courses
+                </p>
+            </div>
+        </div>
+        {f'''
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid {COLORS['border']};">
+            <p style="font-size: 14px; color: {COLORS['text_secondary']};">
+                <strong>Most Used:</strong> {stats['most_used_course']['name']} ({stats['most_used_course']['usage_count']} uses)
+            </p>
+        </div>
+        ''' if stats.get('most_used_course') else ''}
+    </div>
+    """, unsafe_allow_html=True)

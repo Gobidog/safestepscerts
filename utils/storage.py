@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import structlog
 
 from config import config
+from .course_manager import CourseManager
 
 # Configure logger
 logger = structlog.get_logger()
@@ -55,6 +56,9 @@ class StorageManager:
                 directory.mkdir(parents=True, exist_ok=True)
             
             logger.info(f"Using local storage at: {self.local_path}")
+        
+        # Initialize course manager
+        self.course_manager = CourseManager(self.local_path / "metadata")
     
     def save_template(self, file_buffer: Union[BinaryIO, bytes], template_name: str, 
                      metadata: Optional[Dict] = None) -> bool:
@@ -518,6 +522,48 @@ class StorageManager:
             logger.error(f"Failed to get activity logs: {e}")
             return []
     
+    # Course Template Methods
+    def save_course_template(self, name: str, description: str, created_by: str = "admin") -> Optional[Dict]:
+        """Save a new course template"""
+        return self.course_manager.create_course(name, description, created_by)
+    
+    def list_course_templates(self, sort_by: str = 'created_at', reverse: bool = True) -> List[Dict]:
+        """List all course templates"""
+        return self.course_manager.list_courses(sort_by, reverse)
+    
+    def get_course_template(self, course_id: str) -> Optional[Dict]:
+        """Get a course template by ID"""
+        return self.course_manager.get_course(course_id)
+    
+    def get_course_template_by_name(self, name: str) -> Optional[Dict]:
+        """Get a course template by name"""
+        return self.course_manager.get_course_by_name(name)
+    
+    def update_course_template(self, course_id: str, name: Optional[str] = None, 
+                              description: Optional[str] = None) -> Optional[Dict]:
+        """Update a course template"""
+        return self.course_manager.update_course(course_id, name, description)
+    
+    def delete_course_template(self, course_id: str) -> bool:
+        """Delete a course template"""
+        return self.course_manager.delete_course(course_id)
+    
+    def search_course_templates(self, query: str) -> List[Dict]:
+        """Search course templates by name or description"""
+        return self.course_manager.search_courses(query)
+    
+    def increment_course_usage(self, course_id: str) -> bool:
+        """Increment usage count for a course"""
+        return self.course_manager.increment_usage(course_id)
+    
+    def get_course_statistics(self) -> Dict:
+        """Get course usage statistics"""
+        return self.course_manager.get_statistics()
+    
+    def migrate_default_courses(self) -> int:
+        """Migrate default courses if they don't exist"""
+        return self.course_manager.migrate_default_courses()
+    
     def _clean_filename(self, filename: str) -> str:
         """Clean filename to be safe for storage"""
         # Remove any path components
@@ -550,3 +596,15 @@ cleanup_old_files = storage_manager.cleanup_old_files
 log_certificate_generation = storage_manager.log_certificate_generation
 get_usage_statistics = storage_manager.get_usage_statistics
 get_activity_logs = storage_manager.get_activity_logs
+
+# Course template convenience functions
+save_course_template = storage_manager.save_course_template
+list_course_templates = storage_manager.list_course_templates
+get_course_template = storage_manager.get_course_template
+get_course_template_by_name = storage_manager.get_course_template_by_name
+update_course_template = storage_manager.update_course_template
+delete_course_template = storage_manager.delete_course_template
+search_course_templates = storage_manager.search_course_templates
+increment_course_usage = storage_manager.increment_course_usage
+get_course_statistics = storage_manager.get_course_statistics
+migrate_default_courses = storage_manager.migrate_default_courses

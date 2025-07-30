@@ -46,11 +46,15 @@ from utils.pdf_generator import PDFGenerator
 from utils.storage import StorageManager
 from utils.deployment_info import get_deployment_info
 from utils.ui_components import apply_custom_css, create_progress_steps, COLORS
+from utils.course_manager import CourseManager
 from config import config
 import time
 
 # Initialize storage manager
 storage = StorageManager()
+
+# Initialize course manager
+course_manager = CourseManager(storage.local_path / "metadata")
 
 # Page configuration
 st.set_page_config(
@@ -1059,12 +1063,58 @@ def step3_template():
             
             st.success(f"✅ **Template Selected**: {selected_name}")
             
+            # Course Selection Section
+            st.markdown(f"""
+            <div class="ui-card fade-in" style="margin-top: 24px;">
+                <h3 style="margin-top: 0; color: {COLORS['text_primary']};">📚 Course Selection</h3>
+                <p style="color: {COLORS['text_secondary']}; margin-bottom: 16px;">Choose the course for this certificate</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Get available courses
+            courses = storage.list_course_templates()
+            
+            if courses:
+                # Create course options for selectbox
+                course_options = {f"{course['name']}": course for course in courses}
+                
+                # Course selection
+                selected_course_name = st.selectbox(
+                    "Select a course:",
+                    options=list(course_options.keys()),
+                    key="selected_course",
+                    help="Choose the course that participants completed"
+                )
+                
+                if selected_course_name:
+                    selected_course = course_options[selected_course_name]
+                    st.session_state.selected_course_info = selected_course
+                    
+                    # Show course details
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        if selected_course.get('description'):
+                            st.info(f"📝 **Description**: {selected_course['description']}")
+                    with col2:
+                        if selected_course.get('usage_count', 0) > 0:
+                            st.metric("Usage Count", selected_course['usage_count'])
+            else:
+                st.warning("No courses available. Please contact an administrator to create courses.")
+                # Provide default course for backward compatibility
+                st.session_state.selected_course_info = {
+                    'name': 'Vapes and Vaping',
+                    'id': 'default_course',
+                    'description': 'Default course'
+                }
+            
             # Show selection details
             with st.expander("📋 Selection Details", expanded=False):
                 st.write(f"**Template**: {selected_name}")
                 st.write(f"**File**: {selected_info.get('filename', 'N/A')}")
                 if selected_info.get('description'):
                     st.write(f"**Description**: {selected_info['description']}")
+                if st.session_state.get('selected_course_info'):
+                    st.write(f"**Course**: {st.session_state.selected_course_info['name']}")
                 
                 # Template validation status
                 template_path = selected_info.get('path')
@@ -1080,15 +1130,20 @@ def step3_template():
                     st.session_state.workflow_step = 2
                     st.rerun()
             with col3:
-                # Validate template before proceeding
+                # Validate template and course selection before proceeding
                 template_path = selected_info.get('path')
-                if template_path and os.path.exists(template_path):
+                has_course = st.session_state.get('selected_course_info') is not None
+                
+                if template_path and os.path.exists(template_path) and has_course:
                     if st.button("Continue to Generate →", type="primary", use_container_width=True):
                         st.session_state.workflow_step = 4
                         st.rerun()
                 else:
-                    st.error("Cannot proceed: Selected template is not accessible")
-                    if st.button("🔄 Refresh Templates", use_container_width=True):
+                    if not has_course:
+                        st.error("Please select a course")
+                    else:
+                        st.error("Cannot proceed: Selected template is not accessible")
+                    if st.button("🔄 Refresh", use_container_width=True):
                         st.rerun()
         else:
             st.info("👆 **Please select a template above to continue**")
@@ -1139,10 +1194,15 @@ def step4_generate():
         template_info = st.session_state.get('selected_template_info', {})
         template_display_name = template_info.get('display_name', st.session_state.selected_template)
         
+        # Get course info
+        course_info = st.session_state.get('selected_course_info', {})
+        course_name = course_info.get('name', 'Vapes and Vaping')  # Default for backward compatibility
+        
         st.info(f"""
         **Ready to generate certificates:**
         - Recipients: {len(st.session_state.validated_data)}
         - Template: {template_display_name}
+        - Course: {course_name}
         """)
         
         col1, col2, col3 = st.columns([2, 1, 2])
@@ -1202,11 +1262,17 @@ def step4_generate():
                         safe_name = f"{first_name}_{last_name}".replace(' ', '_').replace('/', '_')
                         output_path = str(temp_dir / f"{safe_name}_{timestamp}.pdf")
                         
-                        # Generate the certificate
+                        # Get course info
+                        course_info = st.session_state.get('selected_course_info', {})
+                        course_name = course_info.get('name', 'Vapes and Vaping')
+                        course_id = course_info.get('id')
+                        
+                        # Generate the certificate with course information
                         pdf_path = generator.generate_certificate(
                             first_name=str(first_name).strip(),
                             last_name=str(last_name).strip(),
-                            output_path=output_path
+                            output_path=output_path,
+                            additional_fields={'course': course_name}
                         )
                         generated_files.append(pdf_path)
                         
@@ -1216,6 +1282,10 @@ def step4_generate():
                             template=template_display_name,
                             count=1
                         )
+                        
+                        # Update course usage count if we have a valid course ID
+                        if course_id and course_id != 'default_course':
+                            storage.increment_course_usage(course_id)
                         
                     except Exception as e:
                         st.error(f"Error generating certificate for {first_name} {last_name}: {str(e)}")
@@ -1353,7 +1423,7 @@ def render_dashboard():
     # Action cards
     st.subheader("Quick Actions")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         with st.container():
@@ -1367,6 +1437,17 @@ def render_dashboard():
             st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
+        with st.container():
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown("### 📚 Manage Courses")
+            st.markdown("Create and manage course templates")
+            if st.button("Go to Courses", key="quick_courses"):
+                # Use st.session_state to trigger navigation
+                st.session_state.navigate_to = "Courses"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col3:
         with st.container():
             st.markdown('<div class="card">', unsafe_allow_html=True)
             st.markdown("### 👥 Manage Users")
@@ -1760,6 +1841,332 @@ def render_templates_page():
         logger.error(f"Template listing error: {e}")
 
 
+def render_courses_page():
+    """Render course management page with enhanced UI/UX"""
+    from utils.ui_components import (
+        create_header, create_card, create_empty_state,
+        create_status_badge, create_action_menu, COLORS
+    )
+    
+    # Migrate default courses if needed
+    if not course_manager.courses:
+        migrated = course_manager.migrate_default_courses()
+        if migrated > 0:
+            st.info(f"Initialized {migrated} default courses")
+    
+    create_header(
+        "Course Management",
+        "Create and manage course templates for certificate generation",
+        get_current_user()
+    )
+    
+    # Quick actions bar
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        search_query = st.text_input(
+            "Search courses",
+            placeholder="🔍 Search by name or description...",
+            label_visibility="collapsed"
+        )
+    with col2:
+        if st.button("➕ Add Course", type="primary", use_container_width=True):
+            st.session_state.show_add_course_form = True
+    with col3:
+        # Statistics button
+        if st.button("📊 Statistics", use_container_width=True):
+            st.session_state.show_course_stats = not st.session_state.get('show_course_stats', False)
+    
+    # Show statistics if toggled
+    if st.session_state.get('show_course_stats', False):
+        stats = course_manager.get_statistics()
+        with st.container():
+            st.markdown(f"""
+            <div style="
+                background-color: {COLORS['background']};
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+                border: 1px solid {COLORS['border']};
+            ">
+                <h4 style="margin-bottom: 16px;">📊 Course Statistics</h4>
+            """, unsafe_allow_html=True)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Courses", stats.get('total_courses', 0))
+            with col2:
+                st.metric("Total Usage", stats.get('total_usage', 0))
+            with col3:
+                st.metric("Courses Used", stats.get('courses_with_usage', 0))
+            with col4:
+                st.metric("Unused Courses", stats.get('courses_without_usage', 0))
+            
+            if stats.get('most_used_course'):
+                st.markdown(f"**Most Used:** {stats['most_used_course']['name']} ({stats['most_used_course']['usage_count']} uses)")
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Add new course modal
+    if st.session_state.get('show_add_course_form', False):
+        with st.container():
+            st.markdown(f"""
+            <div style="
+                background-color: white;
+                border-radius: 12px;
+                padding: 24px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                border: 1px solid {COLORS['border']};
+                margin-bottom: 20px;
+            ">
+            """, unsafe_allow_html=True)
+            
+            st.subheader("➕ Add New Course")
+            st.caption("Create a new course template for certificate generation")
+            
+            with st.form("add_course_form"):
+                course_name = st.text_input(
+                    "Course Name",
+                    placeholder="e.g., Digital Citizenship",
+                    help="Enter a descriptive name for the course"
+                )
+                
+                course_description = st.text_area(
+                    "Course Description",
+                    placeholder="Describe what this course covers and when it should be used...",
+                    help="Provide a clear description to help users understand the course content"
+                )
+                
+                col_submit, col_cancel = st.columns(2)
+                with col_submit:
+                    submit_button = st.form_submit_button("💾 Save Course", type="primary", use_container_width=True)
+                with col_cancel:
+                    cancel_button = st.form_submit_button("Cancel", use_container_width=True)
+                
+                if cancel_button:
+                    st.session_state.show_add_course_form = False
+                    st.rerun()
+                
+                if submit_button:
+                    if not course_name:
+                        st.error("Please provide a course name")
+                    elif not course_description:
+                        st.error("Please provide a course description")
+                    else:
+                        # Create the course
+                        new_course = course_manager.create_course(
+                            name=course_name,
+                            description=course_description,
+                            created_by=get_current_user()['username']
+                        )
+                        
+                        if new_course:
+                            st.success(f"Course '{course_name}' created successfully!")
+                            log_activity(
+                                get_current_user()['username'],
+                                "create_course",
+                                {"course_name": course_name}
+                            )
+                            st.session_state.show_add_course_form = False
+                            st.rerun()
+                        else:
+                            st.error("Failed to create course. It may already exist.")
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Course list
+    st.subheader("Course Library")
+    
+    # Get courses based on search
+    if search_query:
+        courses = course_manager.search_courses(search_query)
+    else:
+        courses = course_manager.list_courses(sort_by='name', reverse=False)
+    
+    if not courses:
+        create_empty_state(
+            "No courses found",
+            "Get started by adding your first course template",
+            "➕ Add Course"
+        )
+    else:
+        # Create course cards
+        for i in range(0, len(courses), 3):
+            cols = st.columns(3)
+            for j in range(3):
+                if i + j < len(courses):
+                    course = courses[i + j]
+                    with cols[j]:
+                        with st.container():
+                            # Course card
+                            st.markdown(f"""
+                            <div style="
+                                background-color: white;
+                                border-radius: 12px;
+                                padding: 20px;
+                                border: 1px solid {COLORS['border']};
+                                transition: all 0.3s ease;
+                                height: 100%;
+                                position: relative;
+                            ">
+                                <h4 style="margin-bottom: 8px; color: {COLORS['primary']};">
+                                    {course['name']}
+                                </h4>
+                                <p style="color: {COLORS['text_secondary']}; font-size: 14px; margin-bottom: 16px;">
+                                    {course['description']}
+                                </p>
+                            """, unsafe_allow_html=True)
+                            
+                            # Course metadata
+                            col_usage, col_created = st.columns(2)
+                            with col_usage:
+                                st.caption(f"📊 {course.get('usage_count', 0)} uses")
+                            with col_created:
+                                created_date = datetime.fromisoformat(course['created_at']).strftime("%b %d, %Y")
+                                st.caption(f"📅 {created_date}")
+                            
+                            # Last used info
+                            if course.get('last_used'):
+                                last_used = datetime.fromisoformat(course['last_used']).strftime("%b %d, %Y")
+                                st.caption(f"Last used: {last_used}")
+                            else:
+                                st.caption("Never used")
+                            
+                            # Action buttons
+                            col_edit, col_delete = st.columns(2)
+                            with col_edit:
+                                if st.button("✏️ Edit", key=f"edit_{course['id']}", use_container_width=True):
+                                    st.session_state.edit_course_id = course['id']
+                                    st.session_state.show_edit_course_form = True
+                            
+                            with col_delete:
+                                # Only allow deletion of unused courses
+                                if course.get('usage_count', 0) == 0:
+                                    if st.button("🗑️ Delete", key=f"delete_{course['id']}", use_container_width=True):
+                                        st.session_state.delete_course_id = course['id']
+                                        st.session_state.show_delete_confirm = True
+                                else:
+                                    st.button("🔒 In Use", key=f"locked_{course['id']}", disabled=True, use_container_width=True)
+                            
+                            st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Edit course modal
+    if st.session_state.get('show_edit_course_form', False) and st.session_state.get('edit_course_id'):
+        course_id = st.session_state.edit_course_id
+        course = course_manager.get_course(course_id)
+        
+        if course:
+            with st.container():
+                st.markdown(f"""
+                <div style="
+                    background-color: white;
+                    border-radius: 12px;
+                    padding: 24px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    border: 1px solid {COLORS['border']};
+                    margin-top: 20px;
+                ">
+                """, unsafe_allow_html=True)
+                
+                st.subheader("✏️ Edit Course")
+                
+                with st.form("edit_course_form"):
+                    course_name = st.text_input(
+                        "Course Name",
+                        value=course['name'],
+                        help="Enter a descriptive name for the course"
+                    )
+                    
+                    course_description = st.text_area(
+                        "Course Description",
+                        value=course['description'],
+                        help="Provide a clear description to help users understand the course content"
+                    )
+                    
+                    col_submit, col_cancel = st.columns(2)
+                    with col_submit:
+                        submit_button = st.form_submit_button("💾 Save Changes", type="primary", use_container_width=True)
+                    with col_cancel:
+                        cancel_button = st.form_submit_button("Cancel", use_container_width=True)
+                    
+                    if cancel_button:
+                        st.session_state.show_edit_course_form = False
+                        st.session_state.edit_course_id = None
+                        st.rerun()
+                    
+                    if submit_button:
+                        if not course_name:
+                            st.error("Course name cannot be empty")
+                        elif not course_description:
+                            st.error("Course description cannot be empty")
+                        else:
+                            # Update the course
+                            updated_course = course_manager.update_course(
+                                course_id=course_id,
+                                name=course_name,
+                                description=course_description
+                            )
+                            
+                            if updated_course:
+                                st.success(f"Course '{course_name}' updated successfully!")
+                                log_activity(
+                                    get_current_user()['username'],
+                                    "update_course",
+                                    {"course_id": course_id, "course_name": course_name}
+                                )
+                                st.session_state.show_edit_course_form = False
+                                st.session_state.edit_course_id = None
+                                st.rerun()
+                            else:
+                                st.error("Failed to update course. The name may already be in use.")
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Delete confirmation modal
+    if st.session_state.get('show_delete_confirm', False) and st.session_state.get('delete_course_id'):
+        course_id = st.session_state.delete_course_id
+        course = course_manager.get_course(course_id)
+        
+        if course:
+            with st.container():
+                st.markdown(f"""
+                <div style="
+                    background-color: white;
+                    border-radius: 12px;
+                    padding: 24px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    border: 1px solid {COLORS['error']};
+                    margin-top: 20px;
+                ">
+                """, unsafe_allow_html=True)
+                
+                st.subheader("🗑️ Delete Course?")
+                st.warning(f"Are you sure you want to delete the course **{course['name']}**? This action cannot be undone.")
+                
+                col_confirm, col_cancel = st.columns(2)
+                with col_confirm:
+                    if st.button("🗑️ Delete", type="primary", use_container_width=True):
+                        if course_manager.delete_course(course_id):
+                            st.success(f"Course '{course['name']}' deleted successfully!")
+                            log_activity(
+                                get_current_user()['username'],
+                                "delete_course",
+                                {"course_id": course_id, "course_name": course['name']}
+                            )
+                            st.session_state.show_delete_confirm = False
+                            st.session_state.delete_course_id = None
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete course")
+                
+                with col_cancel:
+                    if st.button("Cancel", use_container_width=True):
+                        st.session_state.show_delete_confirm = False
+                        st.session_state.delete_course_id = None
+                        st.rerun()
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+
+
 def render_users_page():
     """Render users management page"""
     st.title("User Management")
@@ -2140,15 +2547,60 @@ def admin_step3_template():
             if 'preview' in selected_template:
                 st.image(selected_template['preview'], caption=f"Preview: {selected_template_name}")
             
+            # Course Selection
+            st.subheader("📚 Course Selection")
+            
+            # Get available courses
+            courses = storage.list_course_templates()
+            
+            if courses:
+                # Create course options for selectbox
+                course_options = {f"{course['name']}": course for course in courses}
+                
+                # Course selection
+                selected_course_name = st.selectbox(
+                    "Select a course:",
+                    options=list(course_options.keys()),
+                    key="admin_selected_course",
+                    help="Choose the course that participants completed"
+                )
+                
+                if selected_course_name:
+                    selected_course = course_options[selected_course_name]
+                    st.session_state.admin_selected_course_info = selected_course
+                    
+                    # Show course details
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        if selected_course.get('description'):
+                            st.info(f"📝 **Description**: {selected_course['description']}")
+                    with col2:
+                        if selected_course.get('usage_count', 0) > 0:
+                            st.metric("Usage Count", selected_course['usage_count'])
+            else:
+                st.warning("No courses available. Using default course.")
+                # Provide default course for backward compatibility
+                st.session_state.admin_selected_course_info = {
+                    'name': 'Vapes and Vaping',
+                    'id': 'default_course',
+                    'description': 'Default course'
+                }
+            
+            # Navigation buttons
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("← Back to Validation", use_container_width=True):
                     st.session_state.admin_workflow_step = 2
                     st.rerun()
             with col2:
-                if st.button("Continue to Generate →", type="primary", use_container_width=True):
-                    st.session_state.admin_workflow_step = 4
-                    st.rerun()
+                # Check if both template and course are selected
+                has_course = st.session_state.get('admin_selected_course_info') is not None
+                if has_course:
+                    if st.button("Continue to Generate →", type="primary", use_container_width=True):
+                        st.session_state.admin_workflow_step = 4
+                        st.rerun()
+                else:
+                    st.error("Please select a course to continue")
 
 
 def admin_step4_generate():
@@ -2166,7 +2618,12 @@ def admin_step4_generate():
     
     # Show generation summary
     st.subheader("📋 Generation Summary")
-    col1, col2 = st.columns(2)
+    
+    # Get course info
+    course_info = st.session_state.get('admin_selected_course_info', {})
+    course_name = course_info.get('name', 'Vapes and Vaping')
+    
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.info(f"**Participants:** {len(st.session_state.admin_validated_data)}")
     with col2:
@@ -2174,6 +2631,8 @@ def admin_step4_generate():
         template_display_name = st.session_state.admin_selected_template.get('display_name', 
                                                                            st.session_state.admin_selected_template.get('name', 'Unknown Template'))
         st.info(f"**Template:** {template_display_name}")
+    with col3:
+        st.info(f"**Course:** {course_name}")
     
     # Generate button
     if len(st.session_state.admin_generated_files) == 0:
@@ -2256,6 +2715,14 @@ def admin_step4_generate():
                     template=template_display_name,
                     count=len(generated_files)
                 )
+                
+                # Update course usage count
+                course_info = st.session_state.get('admin_selected_course_info', {})
+                course_id = course_info.get('id')
+                if course_id and course_id != 'default_course':
+                    # Increment usage by the number of certificates generated
+                    for _ in range(len(generated_files)):
+                        storage.increment_course_usage(course_id)
                 
                 progress_bar.progress(1.0)
                 status_text.text("Complete!")
@@ -2372,13 +2839,14 @@ def main():
             dashboard_page = st.Page(render_dashboard, title="Dashboard", icon="📊", default=True)
             generate_page = st.Page(render_admin_certificate_generation, title="Generate Certificates", icon="🏆")
             templates_page = st.Page(render_templates_page, title="Templates", icon="📄")
+            courses_page = st.Page(render_courses_page, title="Courses", icon="📚")
             users_page = st.Page(render_users_page, title="Users", icon="👥")
             analytics_page = st.Page(render_analytics_page, title="Analytics", icon="📈")
             settings_page = st.Page(render_settings_page, title="Settings", icon="⚙️")
             logout_page = st.Page(logout_action, title="Logout", icon="🚪")
             
             pg = st.navigation({
-                "Admin": [dashboard_page, generate_page, templates_page, users_page],
+                "Admin": [dashboard_page, generate_page, templates_page, courses_page, users_page],
                 "System": [analytics_page, settings_page, logout_page]
             })
         else:
@@ -2401,6 +2869,8 @@ def main():
         if user and user.get("role") == "admin":
             if target_page == "Templates":
                 st.switch_page(templates_page)
+            elif target_page == "Courses":
+                st.switch_page(courses_page)
             elif target_page == "Users":
                 st.switch_page(users_page)
     
