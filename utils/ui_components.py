@@ -426,7 +426,7 @@ def create_status_badge(status: str, type: str = 'default'):
     """
 
 def create_progress_steps(steps: List[Tuple[str, str, int]], current_step: int):
-    """Create an enhanced progress indicator"""
+    """Create an enhanced progress indicator using native Streamlit components"""
     cols = st.columns(len(steps))
     
     for idx, (label, icon, step_num) in enumerate(steps):
@@ -434,49 +434,29 @@ def create_progress_steps(steps: List[Tuple[str, str, int]], current_step: int):
             # Determine status
             if step_num < current_step:
                 status = 'completed'
-                color = COLORS['success']
-                bg_color = 'rgba(82, 196, 26, 0.1)'
+                status_icon = '✓'
+                status_text = 'Completed'
             elif step_num == current_step:
                 status = 'active'
-                color = COLORS['primary']
-                bg_color = 'rgba(3, 42, 81, 0.1)'
+                status_icon = str(step_num)
+                status_text = 'Current'
             else:
                 status = 'pending'
-                color = COLORS['border']
-                bg_color = COLORS['background']
+                status_icon = str(step_num)
+                status_text = 'Pending'
             
-            # Create step
-            st.markdown(f"""
-            <div style="text-align: center;" class="fade-in">
-                <div style="
-                    padding: 16px;
-                    border-radius: 12px;
-                    background-color: {bg_color};
-                    border: 2px solid {color};
-                    margin-bottom: 10px;
-                    {'transform: scale(1.05);' if status == 'active' else ''}
-                ">
-                    <div style="font-size: 32px; margin-bottom: 8px;">{icon}</div>
-                    <div style="
-                        width: 48px;
-                        height: 48px;
-                        border-radius: 50%;
-                        background-color: {color};
-                        color: white;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin: 0 auto 12px;
-                        font-weight: bold;
-                        font-size: 18px;
-                        {'animation: pulse 2s infinite;' if status == 'active' else ''}
-                    ">
-                        {'✓' if status == 'completed' else step_num}
-                    </div>
-                    <div style="font-size: 14px; font-weight: 600; color: {color};">{label}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # Create step using native Streamlit components
+            with st.container():
+                # Center content
+                st.markdown(f"<div style='text-align: center;'>{icon}</div>", unsafe_allow_html=True)
+                
+                # Status indicator
+                if status == 'completed':
+                    st.success(f"{status_icon} {label}")
+                elif status == 'active':
+                    st.info(f"{status_icon} {label}")
+                else:
+                    st.markdown(f"{status_icon} {label}")
 
 def create_loading_animation(text: str = "Loading..."):
     """Create a custom loading animation"""

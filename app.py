@@ -392,59 +392,9 @@ def render_progress_bar(current_step: int):
         ("Complete", "🎉", 5)
     ]
     
-    # Create columns for steps
-    cols = st.columns(len(steps))
-    
-    for idx, (label, icon, step_num) in enumerate(steps):
-        with cols[idx]:
-            # Determine step status
-            if step_num < current_step:
-                status_color = "#9ACA3C"  # Green for completed
-                status_text = "✓"
-                container_style = "background-color: #f0f8e8; border: 2px solid #9ACA3C;"
-            elif step_num == current_step:
-                status_color = "#032A51"  # Blue for active
-                status_text = str(step_num)
-                container_style = "background-color: #e8f0f8; border: 2px solid #032A51;"
-            else:
-                status_color = "#E1E8ED"  # Gray for pending
-                status_text = str(step_num)
-                container_style = "background-color: #f5f7fa; border: 2px solid #E1E8ED;"
-            
-            # Create step container
-            st.markdown(f"""
-            <div style="text-align: center; padding: 10px; border-radius: 10px; {container_style}">
-                <div style="font-size: 24px; margin-bottom: 5px;">{icon}</div>
-                <div style="
-                    width: 40px; 
-                    height: 40px; 
-                    border-radius: 50%; 
-                    background-color: {status_color}; 
-                    color: white; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    margin: 0 auto 8px; 
-                    font-weight: bold;
-                ">{status_text}</div>
-                <div style="font-size: 14px; font-weight: 600; color: {status_color};">{label}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Add connecting line (except for last step)
-            if idx < len(steps) - 1:
-                line_color = "#9ACA3C" if step_num < current_step else "#E1E8ED"
-                st.markdown(f"""
-                <div style="
-                    position: relative;
-                    top: -60px;
-                    left: 50%;
-                    width: 100%;
-                    height: 2px;
-                    background-color: {line_color};
-                    z-index: -1;
-                "></div>
-                """, unsafe_allow_html=True)
+    # Use the ui_components function to create progress steps
+    from utils.ui_components import create_progress_steps
+    create_progress_steps(steps, current_step)
 
 
 def login_page():
