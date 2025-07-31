@@ -548,9 +548,10 @@ def step3_template():
         st.header("Step 3: Choose a Template")
         st.caption("Select a certificate design for your participants")
     
-    # Get available templates from storage
+    # Get available templates - Use programmatic certificate
     try:
-        available_templates = storage.list_templates()
+        # We no longer need PDF templates since we use programmatic generation
+        available_templates = [{"name": "Programmatic Certificate", "filename": "programmatic", "path": "programmatic"}]
         
         if not available_templates:
             st.error("⚠️ **No Templates Available**: No certificate templates were found in the system.")
@@ -1217,8 +1218,8 @@ def render_templates_page():
     st.subheader("📄 Template Library")
     
     try:
-        # Get actual templates from storage
-        templates = storage.list_templates()
+        # Get templates - Use programmatic certificate
+        templates = [{"name": "Programmatic Certificate", "filename": "programmatic", "path": "programmatic", "created": "2025-07-30", "size": 0}]
         
         # Filter templates based on search
         if search_query:
@@ -2001,9 +2002,11 @@ def admin_step3_template():
         # Container automatically closes
         return
     
-    # Template selection
-    templates = storage.list_templates()
+    # Template selection - Use programmatic certificate
+    # We no longer need PDF templates since we use programmatic generation
+    templates = [{"name": "Programmatic Certificate", "filename": "programmatic", "path": "programmatic"}]
     
+    # Always have at least one template available
     if not templates:
         st.warning("⚠️ No templates available. Please contact administrator to upload templates.")
     else:
