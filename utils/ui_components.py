@@ -31,399 +31,71 @@ TYPOGRAPHY = {
 }
 
 def apply_custom_css():
-    """Apply enhanced custom CSS for better UI/UX"""
-    st.markdown("""
-    <style>
-        /* Import Inter font */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        
-        /* CSS Variables */
-        :root {
-            --primary: #032A51;
-            --accent: #9ACA3C;
-            --success: #52C41A;
-            --warning: #FAAD14;
-            --error: #F5222D;
-            --info: #1890FF;
-            --background: #F5F7FA;
-            --border: #E1E8ED;
-            --text-primary: #2D3748;
-            --text-secondary: #718096;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-        }
-        
-        /* Global styles */
-        * {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        
-        /* Hide Streamlit branding */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        [data-testid="stToolbar"] {visibility: hidden;}
-        
-        /* Main container */
-        .main {
-            padding: 0;
-            background-color: var(--background);
-            min-height: 100vh;
-        }
-        
-        /* Enhanced Card Component */
-        .ui-card {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
-            transition: var(--transition);
-        }
-        
-        .ui-card:hover {
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
-        }
-        
-        /* Course Card Specific */
-        .course-card {
-            min-height: 200px;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .course-card h4 {
-            margin-bottom: 8px;
-            color: var(--primary);
-        }
-        
-        .course-card p {
-            flex-grow: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-        }
-        
-        /* Button Variants */
-        .stButton > button {
-            border-radius: 8px;
-            padding: 12px 24px;
-            font-weight: 500;
-            border: none;
-            transition: var(--transition);
-            text-transform: none;
-            font-size: 16px;
-            min-height: 48px;
-        }
-        
-        /* Primary Button */
-        .stButton > button[kind="primary"] {
-            background-color: var(--primary);
-            color: white;
-        }
-        
-        .stButton > button[kind="primary"]:hover {
-            background-color: #021d36;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(3, 42, 81, 0.3);
-        }
-        
-        /* Secondary Button */
-        .stButton > button[kind="secondary"] {
-            background-color: white;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-        }
-        
-        .stButton > button[kind="secondary"]:hover {
-            background-color: var(--primary);
-            color: white;
-        }
-        
-        /* Success Button */
-        .success-button > button {
-            background-color: var(--accent);
-            color: white;
-        }
-        
-        .success-button > button:hover {
-            background-color: #7fb12f;
-            transform: translateY(-1px);
-        }
-        
-        /* Form Inputs */
-        .stTextInput > div > div > input,
-        .stSelectbox > div > div > select,
-        .stTextArea > div > div > textarea {
-            border-radius: 8px;
-            border: 2px solid var(--border);
-            padding: 12px 16px;
-            font-size: 16px;
-            transition: var(--transition);
-            background-color: white;
-        }
-        
-        .stTextInput > div > div > input:focus,
-        .stSelectbox > div > div > select:focus,
-        .stTextArea > div > div > textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(3, 42, 81, 0.1);
-            outline: none;
-        }
-        
-        /* File Uploader Enhancement */
-        .stFileUploader {
-            border: 2px dashed var(--border);
-            border-radius: 12px;
-            padding: 40px;
-            background-color: var(--background);
-            transition: var(--transition);
-        }
-        
-        .stFileUploader:hover {
-            border-color: var(--primary);
-            background-color: rgba(3, 42, 81, 0.05);
-        }
-        
-        /* Progress Bar Override */
-        .stProgress > div > div {
-            background-color: var(--accent);
-            height: 8px;
-            border-radius: 4px;
-        }
-        
-        /* Alert Messages */
-        .stAlert {
-            border-radius: 8px;
-            padding: 16px;
-            border: 1px solid;
-            font-size: 14px;
-        }
-        
-        .stAlert[data-baseweb="notification"][data-kind="info"] {
-            background-color: rgba(24, 144, 255, 0.1);
-            border-color: var(--info);
-            color: var(--text-primary);
-        }
-        
-        .stAlert[data-baseweb="notification"][data-kind="success"] {
-            background-color: rgba(82, 196, 26, 0.1);
-            border-color: var(--success);
-            color: var(--text-primary);
-        }
-        
-        .stAlert[data-baseweb="notification"][data-kind="warning"] {
-            background-color: rgba(250, 173, 20, 0.1);
-            border-color: var(--warning);
-            color: var(--text-primary);
-        }
-        
-        .stAlert[data-baseweb="notification"][data-kind="error"] {
-            background-color: rgba(245, 34, 45, 0.1);
-            border-color: var(--error);
-            color: var(--text-primary);
-        }
-        
-        /* Tabs Enhancement */
-        .stTabs [data-baseweb="tab-list"] {
-            background-color: var(--background);
-            border-radius: 8px;
-            padding: 4px;
-            gap: 4px;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            border-radius: 6px;
-            padding: 8px 16px;
-            background-color: transparent;
-            color: var(--text-secondary);
-            transition: var(--transition);
-        }
-        
-        .stTabs [data-baseweb="tab"]:hover {
-            background-color: white;
-            color: var(--text-primary);
-        }
-        
-        .stTabs [aria-selected="true"] {
-            background-color: white;
-            color: var(--primary);
-            box-shadow: var(--shadow-sm);
-        }
-        
-        /* Expander Enhancement */
-        .streamlit-expanderHeader {
-            background-color: var(--background);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            font-weight: 500;
-        }
-        
-        .streamlit-expanderHeader:hover {
-            background-color: white;
-            border-color: var(--primary);
-        }
-        
-        /* Metric Cards */
-        [data-testid="metric-container"] {
-            background-color: white;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow-sm);
-            transition: var(--transition);
-        }
-        
-        [data-testid="metric-container"]:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-        
-        /* Loading States */
-        .stSpinner > div {
-            border-color: var(--primary);
-        }
-        
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .ui-card {
-                padding: 16px;
-                margin-bottom: 16px;
-            }
-            
-            .stButton > button {
-                padding: 10px 20px;
-                font-size: 14px;
-                min-height: 44px;
-            }
-        }
-        
-        /* Accessibility - Focus States */
-        *:focus {
-            outline: 2px solid var(--primary);
-            outline-offset: 2px;
-        }
-        
-        /* Skip to main content link */
-        .skip-to-main {
-            position: absolute;
-            left: -9999px;
-            z-index: 999;
-            padding: 1em;
-            background-color: var(--primary);
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-        }
-        
-        .skip-to-main:focus {
-            left: 50%;
-            transform: translateX(-50%);
-            top: 10px;
-        }
-        
-        /* Animation classes */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    """Apply basic Streamlit theming without HTML injection"""
+    # PHASE 1 EMERGENCY TRIAGE: COMPLETE
+    # All theming is now handled by native Streamlit components
+    # No HTML injection, no CSS injection, fully secure
+    # Using native Streamlit theming through config.toml only
+    pass
 
 def create_header(title: str, subtitle: Optional[str] = None, user_info: Optional[Dict] = None):
-    """Create a consistent header component"""
+    """Create a consistent header component using native components"""
     col1, col2 = st.columns([4, 1])
     
     with col1:
-        st.markdown(f"<h1 style='margin: 0; color: {COLORS['text_primary']};'>{title}</h1>", unsafe_allow_html=True)
+        st.title(title)
         if subtitle:
-            st.markdown(f"<p style='margin: 0; color: {COLORS['text_secondary']};'>{subtitle}</p>", unsafe_allow_html=True)
+            st.markdown(subtitle)
     
     with col2:
         if user_info:
-            st.markdown(f"""
-            <div style='text-align: right; padding: 10px;'>
-                <p style='margin: 0; font-size: 14px; color: {COLORS['text_secondary']};'>
-                    {user_info.get('username', 'User')}
-                </p>
-                <p style='margin: 0; font-size: 12px; color: {COLORS['text_secondary']};'>
-                    {user_info.get('role', 'user').upper()}
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"**{user_info.get('username', 'User')}**")
+            st.caption(user_info.get('role', 'user').upper())
 
 def create_card(content: str, title: Optional[str] = None, icon: Optional[str] = None):
-    """Create a card component"""
-    card_html = '<div class="ui-card fade-in">'
-    
-    if title:
-        icon_html = f"<span style='margin-right: 8px;'>{icon}</span>" if icon else ""
-        card_html += f"<h3 style='margin-top: 0; color: {COLORS['text_primary']};'>{icon_html}{title}</h3>"
-    
-    card_html += content
-    card_html += '</div>'
-    
-    st.markdown(card_html, unsafe_allow_html=True)
+    """Create a card component using native containers"""
+    with st.container(border=True):
+        if title:
+            title_text = f"{icon} {title}" if icon else title
+            st.subheader(title_text)
+        
+        st.markdown(content)
 
 def create_metric_card(label: str, value: str, icon: str, color: str = 'primary'):
-    """Create an enhanced metric card"""
-    st.markdown(f"""
-    <div class="ui-card" style="text-align: center; cursor: pointer;">
-        <div style="font-size: 48px; color: {COLORS[color]}; margin-bottom: 10px;">{icon}</div>
-        <div style="font-size: 36px; font-weight: 700; color: {COLORS[color]}; margin: 10px 0;">{value}</div>
-        <div style="font-size: 14px; color: {COLORS['text_secondary']}; text-transform: uppercase; letter-spacing: 0.5px;">{label}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    """Create an enhanced metric card using native components"""
+    with st.container(border=True):
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown(f"# {icon}")
+            st.metric(label=label, value=value)
 
 def create_status_badge(status: str, type: str = 'default'):
-    """Create a status badge"""
-    colors = {
-        'success': COLORS['success'],
-        'warning': COLORS['warning'],
-        'error': COLORS['error'],
-        'info': COLORS['info'],
-        'default': COLORS['text_secondary']
+    """Create a status badge using native Streamlit components"""
+    # Map status types to native Streamlit status indicators
+    status_icons = {
+        'success': '✅',
+        'warning': '⚠️',
+        'error': '❌',
+        'info': 'ℹ️',
+        'default': '📋'
     }
     
-    bg_colors = {
-        'success': 'rgba(82, 196, 26, 0.1)',
-        'warning': 'rgba(250, 173, 20, 0.1)',
-        'error': 'rgba(245, 34, 45, 0.1)',
-        'info': 'rgba(24, 144, 255, 0.1)',
-        'default': 'rgba(113, 128, 150, 0.1)'
-    }
+    icon = status_icons.get(type, status_icons['default'])
+    badge_text = f"{icon} {status}"
     
-    return f"""
-    <span style="
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 500;
-        color: {colors.get(type, colors['default'])};
-        background-color: {bg_colors.get(type, bg_colors['default'])};
-        border: 1px solid {colors.get(type, colors['default'])};
-    ">{status}</span>
-    """
+    # Use native Streamlit status components
+    if type == 'success':
+        st.success(badge_text, icon="✅")
+    elif type == 'warning':
+        st.warning(badge_text, icon="⚠️")
+    elif type == 'error':
+        st.error(badge_text, icon="❌")
+    elif type == 'info':
+        st.info(badge_text, icon="ℹ️")
+    else:
+        st.markdown(f"**{badge_text}**")
+    
+    return badge_text  # Return text for compatibility
 
 def create_progress_steps(steps: List[Tuple[str, str, int]], current_step: int):
     """Create an enhanced progress indicator using native Streamlit components"""
@@ -447,8 +119,10 @@ def create_progress_steps(steps: List[Tuple[str, str, int]], current_step: int):
             
             # Create step using native Streamlit components
             with st.container():
-                # Center content
-                st.markdown(f"<div style='text-align: center;'>{icon}</div>", unsafe_allow_html=True)
+                # Center content using columns
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    st.markdown(icon)  # No HTML, just the emoji/icon
                 
                 # Status indicator
                 if status == 'completed':
@@ -459,37 +133,17 @@ def create_progress_steps(steps: List[Tuple[str, str, int]], current_step: int):
                     st.markdown(f"{status_icon} {label}")
 
 def create_loading_animation(text: str = "Loading..."):
-    """Create a custom loading animation"""
-    st.markdown(f"""
-    <div style="text-align: center; padding: 40px;">
-        <div style="
-            width: 60px;
-            height: 60px;
-            border: 4px solid {COLORS['background']};
-            border-top: 4px solid {COLORS['primary']};
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        "></div>
-        <p style="color: {COLORS['text_secondary']}; font-size: 16px;">{text}</p>
-    </div>
-    <style>
-        @keyframes spin {{
-            0% {{ transform: rotate(0deg); }}
-            100% {{ transform: rotate(360deg); }}
-        }}
-    </style>
-    """, unsafe_allow_html=True)
+    """Create a custom loading animation using native components"""
+    with st.container():
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            # Use Streamlit's built-in spinner
+            with st.spinner(text):
+                import time
+                time.sleep(0.1)  # Brief pause to show spinner
 
 def show_toast(message: str, type: str = 'info', duration: int = 3):
-    """Show a toast notification"""
-    colors = {
-        'success': COLORS['success'],
-        'error': COLORS['error'],
-        'warning': COLORS['warning'],
-        'info': COLORS['info']
-    }
-    
+    """Show a toast notification using native components"""
     icons = {
         'success': '✅',
         'error': '❌',
@@ -497,34 +151,17 @@ def show_toast(message: str, type: str = 'info', duration: int = 3):
         'info': 'ℹ️'
     }
     
-    placeholder = st.empty()
-    placeholder.markdown(f"""
-    <div style="
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background-color: white;
-        border: 1px solid {colors.get(type, COLORS['info'])};
-        border-radius: 8px;
-        padding: 16px 24px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 9999;
-        animation: slideIn 0.3s ease-out;
-    ">
-        <span style="margin-right: 8px; font-size: 20px;">{icons.get(type, '📢')}</span>
-        <span style="color: {COLORS['text_primary']};">{message}</span>
-    </div>
-    <style>
-        @keyframes slideIn {{
-            from {{ transform: translateX(100%); opacity: 0; }}
-            to {{ transform: translateX(0); opacity: 1; }}
-        }}
-    </style>
-    """, unsafe_allow_html=True)
+    toast_message = f"{icons.get(type, '📢')} {message}"
     
-    import time
-    time.sleep(duration)
-    placeholder.empty()
+    # Use native Streamlit notification components
+    if type == 'success':
+        st.success(toast_message)
+    elif type == 'error':
+        st.error(toast_message)
+    elif type == 'warning':
+        st.warning(toast_message)
+    else:
+        st.info(toast_message)
 
 def create_empty_state(
     icon: str, 
@@ -533,89 +170,46 @@ def create_empty_state(
     action_label: Optional[str] = None,
     action_callback: Optional[callable] = None
 ):
-    """Create an empty state component"""
-    st.markdown(f"""
-    <div style="
-        text-align: center;
-        padding: 60px 20px;
-        background-color: {COLORS['background']};
-        border-radius: 12px;
-        border: 2px dashed {COLORS['border']};
-    ">
-        <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.5;">{icon}</div>
-        <h3 style="color: {COLORS['text_primary']}; margin-bottom: 10px;">{title}</h3>
-        <p style="color: {COLORS['text_secondary']}; max-width: 400px; margin: 0 auto 20px;">{description}</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if action_label and action_callback:
-        col1, col2, col3 = st.columns([1, 1, 1])
+    """Create an empty state component using native components"""
+    with st.container(border=True):
+        col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            if st.button(action_label, type="primary", use_container_width=True):
-                action_callback()
+            st.markdown(f"# {icon}")
+            st.subheader(title)
+            st.markdown(description)
+            
+            if action_label and action_callback:
+                if st.button(action_label, type="primary", use_container_width=True):
+                    action_callback()
 
 def create_breadcrumb(items: List[Dict[str, str]]):
-    """Create a breadcrumb navigation"""
-    breadcrumb_html = '<div style="display: flex; align-items: center; margin-bottom: 20px;">'
-    
+    """Create a breadcrumb navigation using native components"""
+    breadcrumb_parts = []
     for idx, item in enumerate(items):
         if idx > 0:
-            breadcrumb_html += f'<span style="margin: 0 10px; color: {COLORS["text_secondary"]};">›</span>'
-        
-        is_active = idx == len(items) - 1
-        breadcrumb_html += f'''
-        <a href="{item.get('url', '#')}" style="
-            color: {COLORS['primary'] if not is_active else COLORS['text_secondary']};
-            text-decoration: none;
-            font-weight: {500 if is_active else 400};
-            {'pointer-events: none;' if is_active else ''}
-        ">{item['label']}</a>
-        '''
+            breadcrumb_parts.append(" › ")
+        breadcrumb_parts.append(item['label'])
     
-    breadcrumb_html += '</div>'
-    st.markdown(breadcrumb_html, unsafe_allow_html=True)
+    breadcrumb_text = "".join(breadcrumb_parts)
+    st.markdown(f"**Navigation:** {breadcrumb_text}")
 
 def create_search_bar(placeholder: str = "Search...", key: str = "search"):
-    """Create a styled search bar"""
-    search_html = f"""
-    <div style="position: relative; margin-bottom: 20px;">
-        <span style="
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: {COLORS['text_secondary']};
-            font-size: 18px;
-        ">🔍</span>
-    </div>
-    """
-    st.markdown(search_html, unsafe_allow_html=True)
-    
+    """Create a styled search bar using native components"""
     return st.text_input(
-        label="Search",
+        label="🔍 Search",
         placeholder=placeholder,
         key=key,
-        label_visibility="collapsed",
         help="Search for items..."
     )
 
 def create_table_header(columns: List[Dict[str, str]]):
-    """Create a styled table header"""
+    """Create a styled table header using native components"""
     cols = st.columns([col.get('width', 1) for col in columns])
     
     for idx, col in enumerate(columns):
         with cols[idx]:
-            st.markdown(f"""
-            <div style="
-                font-weight: 600;
-                color: {COLORS['text_secondary']};
-                text-transform: uppercase;
-                font-size: 12px;
-                letter-spacing: 0.5px;
-                padding-bottom: 8px;
-                border-bottom: 2px solid {COLORS['border']};
-            ">{col['label']}</div>
-            """, unsafe_allow_html=True)
+            # Use native Streamlit subheader for table headers
+            st.subheader(col['label'].upper(), divider=True)
 
 def create_action_menu(actions: List[Dict[str, any]], key_prefix: str):
     """Create an action menu with icons"""
@@ -633,29 +227,20 @@ def create_action_menu(actions: List[Dict[str, any]], key_prefix: str):
                     action['callback']()
 
 def create_course_card(course: Dict[str, any], on_edit: callable = None, on_delete: callable = None):
-    """Create a course card component"""
-    st.markdown(f"""
-    <div class="ui-card course-card">
-        <h4 style="margin-bottom: 8px; color: {COLORS['primary']};">
-            {course['name']}
-        </h4>
-        <p style="color: {COLORS['text_secondary']}; font-size: 14px; margin-bottom: 16px;">
-            {course['description']}
-        </p>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
-            <div>
-                <span style="font-size: 12px; color: {COLORS['text_secondary']};">
-                    📊 {course.get('usage_count', 0)} uses
-                </span>
-            </div>
-            <div>
-                <span style="font-size: 12px; color: {COLORS['text_secondary']};">
-                    Created by {course.get('created_by', 'Unknown')}
-                </span>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    """Create a course card component using native Streamlit components"""
+    with st.container(border=True):
+        # Course title
+        st.subheader(course['name'])
+        
+        # Course description
+        st.markdown(course['description'])
+        
+        # Course statistics using columns for layout
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption(f"📊 {course.get('usage_count', 0)} uses")
+        with col2:
+            st.caption(f"👤 Created by {course.get('created_by', 'Unknown')}")
     
     # Action buttons
     if on_edit or on_delete:
@@ -705,50 +290,21 @@ def create_course_form(course: Dict[str, any] = None, on_submit: callable = None
                     on_cancel()
 
 def create_course_stats_card(stats: Dict[str, any]):
-    """Create a statistics card for courses"""
-    st.markdown(f"""
-    <div class="ui-card">
-        <h4 style="margin-bottom: 16px;">📊 Course Statistics</h4>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-            <div>
-                <p style="font-size: 32px; font-weight: 700; color: {COLORS['primary']}; margin: 0;">
-                    {stats.get('total_courses', 0)}
-                </p>
-                <p style="font-size: 14px; color: {COLORS['text_secondary']}; margin: 0;">
-                    Total Courses
-                </p>
-            </div>
-            <div>
-                <p style="font-size: 32px; font-weight: 700; color: {COLORS['accent']}; margin: 0;">
-                    {stats.get('total_usage', 0)}
-                </p>
-                <p style="font-size: 14px; color: {COLORS['text_secondary']}; margin: 0;">
-                    Total Usage
-                </p>
-            </div>
-            <div>
-                <p style="font-size: 32px; font-weight: 700; color: {COLORS['success']}; margin: 0;">
-                    {stats.get('courses_with_usage', 0)}
-                </p>
-                <p style="font-size: 14px; color: {COLORS['text_secondary']}; margin: 0;">
-                    Active Courses
-                </p>
-            </div>
-            <div>
-                <p style="font-size: 32px; font-weight: 700; color: {COLORS['warning']}; margin: 0;">
-                    {stats.get('courses_without_usage', 0)}
-                </p>
-                <p style="font-size: 14px; color: {COLORS['text_secondary']}; margin: 0;">
-                    Unused Courses
-                </p>
-            </div>
-        </div>
-        {f'''
-        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid {COLORS['border']};">
-            <p style="font-size: 14px; color: {COLORS['text_secondary']};">
-                <strong>Most Used:</strong> {stats['most_used_course']['name']} ({stats['most_used_course']['usage_count']} uses)
-            </p>
-        </div>
-        ''' if stats.get('most_used_course') else ''}
-    </div>
-    """, unsafe_allow_html=True)
+    """Create a statistics card for courses using native components"""
+    with st.container(border=True):
+        st.subheader("📊 Course Statistics")
+        
+        # Create metrics using native Streamlit columns and metrics
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Total Courses", stats.get('total_courses', 0))
+            st.metric("Active Courses", stats.get('courses_with_usage', 0))
+        
+        with col2:
+            st.metric("Total Usage", stats.get('total_usage', 0))
+            st.metric("Unused Courses", stats.get('courses_without_usage', 0))
+        
+        # Show most used course if available
+        if stats.get('most_used_course'):
+            st.divider()
+            st.markdown(f"**Most Used:** {stats['most_used_course']['name']} ({stats['most_used_course']['usage_count']} uses)")

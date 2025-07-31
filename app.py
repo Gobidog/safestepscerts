@@ -64,322 +64,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for branding and modern UI
-st.markdown("""
-<style>
-    /* Import Inter font */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
-    /* Global styles */
-    * {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Brand colors */
-    :root {
-        --primary-color: #032A51;
-        --accent-color: #9ACA3C;
-        --light-gray: #F5F7FA;
-        --border-color: #E1E8ED;
-        --text-primary: #2D3748;
-        --text-secondary: #718096;
-    }
-    
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    /* header {visibility: hidden;} -- REMOVED to show navigation */
-    
-    /* Alternative: Hide only Streamlit toolbar, not entire header */
-    [data-testid="stToolbar"] {visibility: hidden;}
-    
-    /* Main container styling */
-    .main {
-        padding: 0;
-        background-color: var(--light-gray);
-    }
-    
-    /* Card styling */
-    .card {
-        background: white;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-        border: 1px solid var(--border-color);
-    }
-    
-    /* Button styling */
-    .stButton > button {
-        background-color: var(--primary-color);
-        color: white;
-        border-radius: 8px;
-        padding: 12px 24px;
-        font-weight: 500;
-        border: none;
-        transition: all 0.3s ease;
-    }
-    
-    .stButton > button:hover {
-        background-color: #021d36;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(3, 42, 81, 0.3);
-    }
-    
-    /* Secondary button */
-    .secondary-button > button {
-        background-color: white;
-        color: var(--primary-color);
-        border: 2px solid var(--primary-color);
-    }
-    
-    .secondary-button > button:hover {
-        background-color: var(--primary-color);
-        color: white;
-    }
-    
-    /* Accent button */
-    .accent-button > button {
-        background-color: var(--accent-color);
-        color: white;
-    }
-    
-    .accent-button > button:hover {
-        background-color: #7fb12f;
-    }
-    
-    /* Input styling */
-    .stTextInput > div > div > input,
-    .stSelectbox > div > div > select {
-        border-radius: 8px;
-        border: 2px solid var(--border-color);
-        padding: 10px 16px;
-        font-size: 16px;
-        transition: border-color 0.3s ease;
-    }
-    
-    .stTextInput > div > div > input:focus,
-    .stSelectbox > div > div > select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 1px var(--primary-color);
-    }
-    
-    /* Progress bar styling */
-    .progress-container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin: 40px 0;
-        position: relative;
-    }
-    
-    .progress-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        flex: 1;
-        position: relative;
-    }
-    
-    .progress-step::before {
-        content: '';
-        position: absolute;
-        top: 20px;
-        left: -50%;
-        right: 50%;
-        height: 3px;
-        background-color: var(--border-color);
-        z-index: 0;
-    }
-    
-    .progress-step:first-child::before {
-        display: none;
-    }
-    
-    .progress-step.completed::before {
-        background-color: var(--accent-color);
-    }
-    
-    .progress-circle {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: white;
-        border: 3px solid var(--border-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        z-index: 1;
-        position: relative;
-    }
-    
-    .progress-step.active .progress-circle {
-        border-color: var(--primary-color);
-        background-color: var(--primary-color);
-        color: white;
-    }
-    
-    .progress-step.completed .progress-circle {
-        border-color: var(--accent-color);
-        background-color: var(--accent-color);
-        color: white;
-    }
-    
-    .progress-label {
-        margin-top: 8px;
-        font-size: 14px;
-        color: var(--text-secondary);
-        text-align: center;
-    }
-    
-    .progress-step.active .progress-label,
-    .progress-step.completed .progress-label {
-        color: var(--text-primary);
-        font-weight: 500;
-    }
-    
-    /* File upload styling */
-    .upload-zone {
-        border: 2px dashed var(--border-color);
-        border-radius: 12px;
-        padding: 40px;
-        text-align: center;
-        background-color: var(--light-gray);
-        transition: all 0.3s ease;
-    }
-    
-    .upload-zone:hover {
-        border-color: var(--primary-color);
-        background-color: rgba(3, 42, 81, 0.05);
-    }
-    
-    /* Admin sidebar */
-    .sidebar {
-        background-color: var(--primary-color);
-        color: white;
-        min-height: 100vh;
-        width: 280px;
-    }
-    
-    /* Grid layout for admin dashboard */
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 20px;
-        margin-top: 20px;
-    }
-    
-    /* Stat card */
-    .stat-card {
-        background: white;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        border: 1px solid var(--border-color);
-        text-align: center;
-        transition: transform 0.3s ease;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    .stat-number {
-        font-size: 36px;
-        font-weight: 700;
-        color: var(--primary-color);
-        margin: 16px 0;
-    }
-    
-    .stat-label {
-        color: var(--text-secondary);
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    /* Template card */
-    .template-card {
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        border: 1px solid var(--border-color);
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    
-    .template-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    .template-card.selected {
-        border-color: var(--accent-color);
-        border-width: 2px;
-    }
-    
-    .template-preview {
-        height: 200px;
-        background-color: var(--light-gray);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 48px;
-        color: var(--text-secondary);
-    }
-    
-    .template-info {
-        padding: 16px;
-    }
-    
-    .template-name {
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 4px;
-    }
-    
-    .template-description {
-        font-size: 14px;
-        color: var(--text-secondary);
-    }
-    
-    /* Welcome screen */
-    .welcome-container {
-        max-width: 400px;
-        margin: 100px auto;
-        text-align: center;
-    }
-    
-    .logo-placeholder {
-        width: 120px;
-        height: 120px;
-        background-color: var(--primary-color);
-        border-radius: 24px;
-        margin: 0 auto 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 48px;
-        color: white;
-    }
-    
-    .welcome-title {
-        font-size: 32px;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 16px;
-    }
-    
-    .welcome-subtitle {
-        font-size: 18px;
-        color: var(--text-secondary);
-        margin-bottom: 40px;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Remove unsafe HTML/CSS injection - use native Streamlit theming
 
 
 def render_progress_bar(current_step: int):
@@ -457,51 +142,41 @@ def login_page():
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
     
-    st.markdown("""
-    <div class="welcome-container">
-        <div class="logo-placeholder">🏆</div>
-        <h1 class="welcome-title">SafeSteps</h1>
-        <p class="welcome-subtitle">Certificate Generator</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Welcome header using native Streamlit components
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("# 🏆", help="SafeSteps Certificate Generator")
+        st.title("SafeSteps")
+        st.markdown("**Certificate Generator**")
     
     # Login form with enhanced styling
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Login card
-        st.markdown(f"""
-        <div style="
-            background-color: white;
-            border-radius: 16px;
-            padding: 32px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid {COLORS['border']};
-        ">
-        """, unsafe_allow_html=True)
-        
-        with st.form("login_form", clear_on_submit=False):
-            username_or_email = st.text_input(
-                "Username or Email",
-                placeholder="Enter your username or email",
-                help="Use your assigned username or email address"
-            )
-            
-            password = st.text_input(
-                "Password",
-                type="password",
-                placeholder="Enter your password",
-                help="Contact administrator if you forgot your password"
-            )
-            
-            col_a, col_b = st.columns(2)
-            with col_a:
-                submit = st.form_submit_button("Login", use_container_width=True)
-            with col_b:
-                show_help = st.form_submit_button("Help", use_container_width=True)
-            
-            if show_help:
-                st.info("""
+        # Login card using native container
+        with st.container(border=True):
+            with st.form("login_form", clear_on_submit=False):
+                username_or_email = st.text_input(
+                    "Username or Email",
+                    placeholder="Enter your username or email",
+                    help="Use your assigned username or email address"
+                )
+                
+                password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    help="Contact administrator if you forgot your password"
+                )
+                
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    submit = st.form_submit_button("Login", use_container_width=True)
+                with col_b:
+                    show_help = st.form_submit_button("Help", use_container_width=True)
+                
+                if show_help:
+                    st.info("""
                 **Need Help?**
                 
                 📧 **Contact Information:**
@@ -519,37 +194,37 @@ def login_page():
                 • Ensure JavaScript is enabled in your browser
                 • Try using an incognito/private browsing window
                 """)
-            
-            if submit:
-                if not username_or_email:
-                    st.error("📝 Please enter your username or email address")
-                elif not password:
-                    st.error("🔐 Please enter your password")
-                else:
-                    with st.spinner("Authenticating..."):
-                        try:
-                            success, role, error = login_with_credentials(username_or_email, password)
-                            if success:
-                                user = get_current_user()
-                                st.success(f"✅ Welcome {user['username']}! Logged in as {role}")
-                                log_activity("login", {"username": user['username'], "role": role})
-                                time.sleep(1)  # Brief pause for success message
-                                st.rerun()
-                            else:
-                                # Enhanced error messages
-                                if "Too many login attempts" in (error or ""):
-                                    st.error("🚫 **Rate Limited**: " + error)
-                                    st.info("💡 **Tip**: Wait a few minutes before trying again")
-                                elif "Account is disabled" in (error or ""):
-                                    st.error("🚫 **Account Disabled**: " + error)
-                                    st.info("📞 **Next Step**: Contact your administrator to reactivate your account")
+                
+                if submit:
+                    if not username_or_email:
+                        st.error("📝 Please enter your username or email address")
+                    elif not password:
+                        st.error("🔐 Please enter your password")
+                    else:
+                        with st.spinner("Authenticating..."):
+                            try:
+                                success, role, error = login_with_credentials(username_or_email, password)
+                                if success:
+                                    user = get_current_user()
+                                    st.success(f"✅ Welcome {user['username']}! Logged in as {role}")
+                                    log_activity("login", {"username": user['username'], "role": role})
+                                    time.sleep(1)  # Brief pause for success message
+                                    st.rerun()
                                 else:
-                                    st.error("❌ **Login Failed**: Invalid username/email or password")
-                                    st.info("💡 **Tips**: \n• Double-check your credentials\n• Try copy-pasting to avoid typos\n• Contact admin if you need help")
-                        except Exception as e:
-                            st.error(f"⚠️ **System Error**: Unable to process login request")
-                            st.error(f"Technical details: {str(e)}")
-                            st.info("🔧 **Next Step**: Please try again in a few moments or contact your administrator")
+                                    # Enhanced error messages
+                                    if "Too many login attempts" in (error or ""):
+                                        st.error("🚫 **Rate Limited**: " + error)
+                                        st.info("💡 **Tip**: Wait a few minutes before trying again")
+                                    elif "Account is disabled" in (error or ""):
+                                        st.error("🚫 **Account Disabled**: " + error)
+                                        st.info("📞 **Next Step**: Contact your administrator to reactivate your account")
+                                    else:
+                                        st.error("❌ **Login Failed**: Invalid username/email or password")
+                                        st.info("💡 **Tips**: \n• Double-check your credentials\n• Try copy-pasting to avoid typos\n• Contact admin if you need help")
+                            except Exception as e:
+                                st.error(f"⚠️ **System Error**: Unable to process login request")
+                                st.error(f"Technical details: {str(e)}")
+                                st.info("🔧 **Next Step**: Please try again in a few moments or contact your administrator")
     
     # EMERGENCY AUTHENTICATION RESET (TEMPORARY FIX)
     st.markdown("---")
@@ -659,11 +334,9 @@ def user_workflow():
             user
         )
     with col2:
-        st.markdown("<div style='padding-top: 20px;'>", unsafe_allow_html=True)
         if st.button("🚪 Logout", use_container_width=True):
             logout()
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
     
     # Progress bar
     render_progress_bar(st.session_state.workflow_step)
@@ -685,40 +358,19 @@ def step1_upload():
     """Step 1: File Upload with enhanced UI"""
     from utils.ui_components import create_card, COLORS
     
-    st.markdown(f"""
-    <div class="ui-card fade-in">
-        <h2 style="margin-top: 0; color: {COLORS['text_primary']};">Step 1: Upload Your Data</h2>
-        <p style="color: {COLORS['text_secondary']}; margin-bottom: 24px;">Upload a spreadsheet containing participant names</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Step header using native components
+    with st.container(border=True):
+        st.subheader("Step 1: Upload Your Data")
+        st.markdown("Upload a spreadsheet containing participant names")
     
-    # Enhanced upload zone
-    st.markdown(f"""
-    <div style="
-        border: 3px dashed {COLORS['border']};
-        border-radius: 16px;
-        padding: 48px;
-        text-align: center;
-        background: linear-gradient(135deg, {COLORS['background']} 0%, white 100%);
-        transition: all 0.3s ease;
-        cursor: pointer;
-    " onmouseover="this.style.borderColor='{COLORS['primary']}'; this.style.transform='scale(1.02)'" 
-       onmouseout="this.style.borderColor='{COLORS['border']}'; this.style.transform='scale(1)'">
-        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.6;">📁</div>
-        <h3 style="color: {COLORS['text_primary']}; margin-bottom: 8px;">Drop your file here</h3>
-        <p style="color: {COLORS['text_secondary']}; margin-bottom: 16px;">or click to browse</p>
-        <div style="
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: {COLORS['background']};
-            border-radius: 20px;
-            font-size: 12px;
-            color: {COLORS['text_secondary']};
-        ">
-            <strong>Supported:</strong> CSV, Excel (.xlsx, .xls)
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Enhanced upload zone using native components
+    with st.container(border=True):
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("# 📁")
+            st.markdown("### Drop your file here")
+            st.markdown("or click to browse")
+            st.info("**Supported:** CSV, Excel (.xlsx, .xls)")
     
     uploaded_file = st.file_uploader(
         "Choose a file",
@@ -741,12 +393,10 @@ def step2_validate():
     """Step 2: Data Validation with enhanced feedback"""
     from utils.ui_components import create_card, create_loading_animation, COLORS
     
-    st.markdown(f"""
-    <div class="ui-card fade-in">
-        <h2 style="margin-top: 0; color: {COLORS['text_primary']};">Step 2: Validate Your Data</h2>
-        <p style="color: {COLORS['text_secondary']}; margin-bottom: 24px;">Checking your file for required information</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Use native Streamlit components instead of HTML
+    with st.container(border=True):
+        st.header("Step 2: Validate Your Data")
+        st.caption("Checking your file for required information")
     
     if not st.session_state.uploaded_file:
         st.error("📁 **No file uploaded**: Please go back to Step 1 to upload your data file.")
@@ -890,12 +540,10 @@ def step3_template():
     """Step 3: Template Selection with enhanced UI"""
     from utils.ui_components import create_card, create_empty_state, COLORS
     
-    st.markdown(f"""
-    <div class="ui-card fade-in">
-        <h2 style="margin-top: 0; color: {COLORS['text_primary']};">Step 3: Choose a Template</h2>
-        <p style="color: {COLORS['text_secondary']}; margin-bottom: 24px;">Select a certificate design for your participants</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Use native Streamlit components instead of HTML
+    with st.container(border=True):
+        st.header("Step 3: Choose a Template")
+        st.caption("Select a certificate design for your participants")
     
     # Get available templates from storage
     try:
@@ -919,7 +567,6 @@ def step3_template():
                 if st.button("🔄 Refresh Templates", use_container_width=True):
                     st.rerun()
             
-            st.markdown('</div>', unsafe_allow_html=True)
             return
         
         # Show template statistics
@@ -950,7 +597,6 @@ def step3_template():
         if not validated_templates:
             st.error("❌ **No Valid Templates**: All templates failed validation")
             st.info("Contact your administrator to fix template issues.")
-            st.markdown('</div>', unsafe_allow_html=True)
             return
         
         # Display templates in improved grid
@@ -1013,13 +659,10 @@ def step3_template():
             
             st.success(f"✅ **Template Selected**: {selected_name}")
             
-            # Course Selection Section
-            st.markdown(f"""
-            <div class="ui-card fade-in" style="margin-top: 24px;">
-                <h3 style="margin-top: 0; color: {COLORS['text_primary']};">📚 Course Selection</h3>
-                <p style="color: {COLORS['text_secondary']}; margin-bottom: 16px;">Choose the course for this certificate</p>
-            </div>
-            """, unsafe_allow_html=True)
+            # Course Selection Section using native components
+            with st.container(border=True):
+                st.subheader("📚 Course Selection")
+                st.caption("Choose the course for this certificate")
             
             # Get available courses
             courses = storage.list_course_templates()
@@ -1132,12 +775,10 @@ def step4_generate():
     """Step 4: Generate Certificates with enhanced UI"""
     from utils.ui_components import create_card, COLORS
     
-    st.markdown(f"""
-    <div class="ui-card fade-in">
-        <h2 style="margin-top: 0; color: {COLORS['text_primary']};">Step 4: Generate Certificates</h2>
-        <p style="color: {COLORS['text_secondary']}; margin-bottom: 24px;">Ready to create your certificates</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Use native Streamlit components instead of HTML
+    with st.container(border=True):
+        st.header("Step 4: Generate Certificates")
+        st.caption("Ready to create your certificates")
     
     if not st.session_state.validated_data.empty and st.session_state.selected_template:
         # Get template info for display
@@ -1262,19 +903,13 @@ def step5_complete():
     """Step 5: Download Complete with enhanced celebration"""
     from utils.ui_components import COLORS
     
-    st.markdown(f"""
-    <div class="ui-card fade-in" style="text-align: center; padding: 60px;">
-        <div style="
-            font-size: 80px; 
-            margin-bottom: 24px;
-            animation: pulse 2s infinite;
-        ">🎉</div>
-        <h1 style="color: {COLORS['text_primary']}; margin-bottom: 16px;">Certificates Generated Successfully!</h1>
-        <p style="font-size: 18px; color: {COLORS['text_secondary']}; margin-bottom: 32px;">
-            All certificates have been generated and are ready for download.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Use native Streamlit components instead of HTML
+    with st.container(border=True):
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("# 🎉")
+            st.title("Certificates Generated Successfully!")
+            st.caption("All certificates have been generated and are ready for download.")
     
     if st.session_state.generated_files:
         # Create zip file
@@ -1329,46 +964,38 @@ def render_dashboard():
     st.title("Dashboard")
     st.markdown("Welcome to the SafeSteps Admin Dashboard")
     
-    # Stats cards
-    st.markdown('<div class="dashboard-grid">', unsafe_allow_html=True)
-    
+    # Stats cards using native Streamlit components
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown("""
-        <div class="stat-card">
-            <div class="stat-label">Total Certificates</div>
-            <div class="stat-number">1,234</div>
-        </div>
-        """, unsafe_allow_html=True)
+        with st.container(border=True):
+            st.metric(
+                label="Total Certificates",
+                value="1,234"
+            )
     
     with col2:
         # Get actual user count
         active_users = len([u for u in list_users(include_inactive=False) if u.is_active])
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-label">Active Users</div>
-            <div class="stat-number">{active_users}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        with st.container(border=True):
+            st.metric(
+                label="Active Users",
+                value=str(active_users)
+            )
     
     with col3:
-        st.markdown("""
-        <div class="stat-card">
-            <div class="stat-label">Templates</div>
-            <div class="stat-number">4</div>
-        </div>
-        """, unsafe_allow_html=True)
+        with st.container(border=True):
+            st.metric(
+                label="Templates",
+                value="4"
+            )
     
     with col4:
-        st.markdown("""
-        <div class="stat-card">
-            <div class="stat-label">This Month</div>
-            <div class="stat-number">89</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.metric(
+                label="This Month",
+                value="89"
+            )
     
     # Action cards
     st.subheader("Quick Actions")
@@ -1376,53 +1003,44 @@ def render_dashboard():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        with st.container():
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+        with st.container(border=True):
             st.markdown("### 📄 Manage Templates")
             st.markdown("Upload, edit, or remove certificate templates")
-            if st.button("Go to Templates", key="quick_templates"):
+            if st.button("Go to Templates", key="quick_templates", use_container_width=True):
                 # Use st.session_state to trigger navigation
                 st.session_state.navigate_to = "Templates"
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        with st.container():
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+        with st.container(border=True):
             st.markdown("### 📚 Manage Courses")
             st.markdown("Create and manage course templates")
-            if st.button("Go to Courses", key="quick_courses"):
+            if st.button("Go to Courses", key="quick_courses", use_container_width=True):
                 # Use st.session_state to trigger navigation
                 st.session_state.navigate_to = "Courses"
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
     
     with col3:
-        with st.container():
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+        with st.container(border=True):
             st.markdown("### 👥 Manage Users")
             st.markdown("View and manage user accounts and permissions")
-            if st.button("Go to Users", key="quick_users"):
+            if st.button("Go to Users", key="quick_users", use_container_width=True):
                 # Use st.session_state to trigger navigation
                 st.session_state.navigate_to = "Users"
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
     
     # Recent activity
     st.subheader("Recent Activity")
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    
-    activities = [
-        ("User generated 25 certificates", "2 hours ago"),
-        ("New template uploaded: Summer Workshop", "5 hours ago"),
-        ("Admin updated system settings", "1 day ago"),
-        ("Batch generation completed: 150 certificates", "2 days ago")
-    ]
-    
-    for activity, time in activities:
-        st.markdown(f"• {activity} - *{time}*")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        activities = [
+            ("User generated 25 certificates", "2 hours ago"),
+            ("New template uploaded: Summer Workshop", "5 hours ago"),
+            ("Admin updated system settings", "1 day ago"),
+            ("Batch generation completed: 150 certificates", "2 days ago")
+        ]
+        
+        for activity, time in activities:
+            st.markdown(f"• {activity} - *{time}*")
 
 
 def render_templates_page():
@@ -1455,18 +1073,8 @@ def render_templates_page():
     
     # Upload new template modal
     if st.session_state.get('show_upload_form', False):
-        with st.container():
-            st.markdown(f"""
-            <div style="
-                background-color: white;
-                border-radius: 12px;
-                padding: 24px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                border: 1px solid {COLORS['border']};
-                margin-bottom: 20px;
-            ">
-            """, unsafe_allow_html=True)
-            
+        # Use native container instead of HTML
+        with st.container(border=True):
             st.subheader("📤 Upload New Template")
             st.caption("Add a new certificate template to your library")
         with st.form("upload_template_form"):
@@ -1541,22 +1149,12 @@ def render_templates_page():
                         st.error(f"Error uploading template: {str(e)}")
                         logger.error(f"Template upload error: {e}")
     
-            st.markdown("</div>", unsafe_allow_html=True)
+            pass  # Container automatically closes
     
     # Template validation modal
     if st.session_state.get('show_validate_form', False):
-        with st.container():
-            st.markdown(f"""
-            <div style="
-                background-color: white;
-                border-radius: 12px;
-                padding: 24px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                border: 1px solid {COLORS['border']};
-                margin-bottom: 20px;
-            ">
-            """, unsafe_allow_html=True)
-            
+        # Use native container instead of HTML
+        with st.container(border=True):
             st.subheader("🔍 Validate PDF Template")
         st.info("Upload a PDF to check if it has the required form fields")
         test_template = st.file_uploader(
@@ -1609,10 +1207,11 @@ def render_templates_page():
                 st.session_state.show_validate_form = False
                 st.rerun()
             
-            st.markdown("</div>", unsafe_allow_html=True)
+            pass  # Container automatically closes
     
     # Existing templates section
-    st.markdown("<h3 style='margin-top: 30px;'>📄 Template Library</h3>", unsafe_allow_html=True)
+    # Use native header instead of HTML
+    st.subheader("📄 Template Library")
     
     try:
         # Get actual templates from storage
@@ -1647,36 +1246,20 @@ def render_templates_page():
                         description = template.get('description', 'No description available')
                         size_kb = template.get('size', 0) / 1024 if template.get('size') else 0
                         
-                        st.markdown(f"""
-                        <div class="ui-card" style="height: 280px; display: flex; flex-direction: column;">
-                            <div style="flex: 1;">
-                                <h4 style="margin: 0 0 8px 0; color: {COLORS['text_primary']};">{display_name}</h4>
-                                <p style="
-                                    font-size: 14px; 
-                                    color: {COLORS['text_secondary']}; 
-                                    margin-bottom: 16px;
-                                    overflow: hidden;
-                                    text-overflow: ellipsis;
-                                    display: -webkit-box;
-                                    -webkit-line-clamp: 2;
-                                    -webkit-box-orient: vertical;
-                                ">{description}</p>
-                                
-                                <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-                                    <span style="font-size: 12px; color: {COLORS['text_secondary']};">
-                                        📁 {template.get('filename', 'Unknown file')}
-                                    </span>
-                                </div>
-                                
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <span style="font-size: 12px; color: {COLORS['text_secondary']};">
-                                        💾 {size_kb:.1f} KB
-                                    </span>
-                                    {create_status_badge('Active', 'success')}
-                                </div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # Use native container and components instead of HTML
+                        with st.container(border=True):
+                            st.subheader(display_name)
+                            st.caption(description)
+                            
+                            # Template metadata
+                            col_meta1, col_meta2 = st.columns(2)
+                            with col_meta1:
+                                st.caption(f"📁 {template.get('filename', 'Unknown file')}")
+                            with col_meta2:
+                                st.caption(f"💾 {size_kb:.1f} KB")
+                            
+                            # Status badge using native component
+                            st.success("✅ Active")
                         
                         # Action buttons
                         col_preview, col_delete = st.columns(2)
@@ -1724,7 +1307,7 @@ def render_templates_page():
                                     st.warning("Click again to confirm deletion")
             
             # Summary stats
-            st.markdown("<hr style='margin: 30px 0;'>", unsafe_allow_html=True)
+            st.divider()  # Use native divider instead of HTML
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Total Templates", len(templates))
@@ -1829,17 +1412,9 @@ def render_courses_page():
     # Show statistics if toggled
     if st.session_state.get('show_course_stats', False):
         stats = course_manager.get_statistics()
-        with st.container():
-            st.markdown(f"""
-            <div style="
-                background-color: {COLORS['background']};
-                border-radius: 12px;
-                padding: 20px;
-                margin-bottom: 20px;
-                border: 1px solid {COLORS['border']};
-            ">
-                <h4 style="margin-bottom: 16px;">📊 Course Statistics</h4>
-            """, unsafe_allow_html=True)
+        # Use native container instead of HTML
+        with st.container(border=True):
+            st.subheader("📊 Course Statistics")
             
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -1854,22 +1429,12 @@ def render_courses_page():
             if stats.get('most_used_course'):
                 st.markdown(f"**Most Used:** {stats['most_used_course']['name']} ({stats['most_used_course']['usage_count']} uses)")
             
-            st.markdown("</div>", unsafe_allow_html=True)
+            pass  # Container automatically closes
     
     # Add new course modal
     if st.session_state.get('show_add_course_form', False):
-        with st.container():
-            st.markdown(f"""
-            <div style="
-                background-color: white;
-                border-radius: 12px;
-                padding: 24px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                border: 1px solid {COLORS['border']};
-                margin-bottom: 20px;
-            ">
-            """, unsafe_allow_html=True)
-            
+        # Use native container instead of HTML
+        with st.container(border=True):
             st.subheader("➕ Add New Course")
             st.caption("Create a new course template for certificate generation")
             
@@ -1921,7 +1486,7 @@ def render_courses_page():
                         else:
                             st.error("Failed to create course. It may already exist.")
             
-            st.markdown("</div>", unsafe_allow_html=True)
+            pass  # Container automatically closes
     
     # Course list
     st.subheader("Course Library")
@@ -1946,25 +1511,11 @@ def render_courses_page():
                 if i + j < len(courses):
                     course = courses[i + j]
                     with cols[j]:
-                        with st.container():
+                        # Use native container instead of HTML
+                        with st.container(border=True):
                             # Course card
-                            st.markdown(f"""
-                            <div style="
-                                background-color: white;
-                                border-radius: 12px;
-                                padding: 20px;
-                                border: 1px solid {COLORS['border']};
-                                transition: all 0.3s ease;
-                                height: 100%;
-                                position: relative;
-                            ">
-                                <h4 style="margin-bottom: 8px; color: {COLORS['primary']};">
-                                    {course['name']}
-                                </h4>
-                                <p style="color: {COLORS['text_secondary']}; font-size: 14px; margin-bottom: 16px;">
-                                    {course['description']}
-                                </p>
-                            """, unsafe_allow_html=True)
+                            st.subheader(course['name'])
+                            st.caption(course['description'])
                             
                             # Course metadata
                             col_usage, col_created = st.columns(2)
@@ -1997,7 +1548,7 @@ def render_courses_page():
                                 else:
                                     st.button("🔒 In Use", key=f"locked_{course['id']}", disabled=True, use_container_width=True)
                             
-                            st.markdown("</div>", unsafe_allow_html=True)
+                            pass  # Container automatically closes
     
     # Edit course modal
     if st.session_state.get('show_edit_course_form', False) and st.session_state.get('edit_course_id'):
@@ -2005,18 +1556,8 @@ def render_courses_page():
         course = course_manager.get_course(course_id)
         
         if course:
-            with st.container():
-                st.markdown(f"""
-                <div style="
-                    background-color: white;
-                    border-radius: 12px;
-                    padding: 24px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                    border: 1px solid {COLORS['border']};
-                    margin-top: 20px;
-                ">
-                """, unsafe_allow_html=True)
-                
+            # Use native container instead of HTML
+            with st.container(border=True):
                 st.subheader("✏️ Edit Course")
                 
                 with st.form("edit_course_form"):
@@ -2069,7 +1610,7 @@ def render_courses_page():
                             else:
                                 st.error("Failed to update course. The name may already be in use.")
                 
-                st.markdown("</div>", unsafe_allow_html=True)
+                pass  # Container automatically closes
     
     # Delete confirmation modal
     if st.session_state.get('show_delete_confirm', False) and st.session_state.get('delete_course_id'):
@@ -2077,18 +1618,8 @@ def render_courses_page():
         course = course_manager.get_course(course_id)
         
         if course:
-            with st.container():
-                st.markdown(f"""
-                <div style="
-                    background-color: white;
-                    border-radius: 12px;
-                    padding: 24px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                    border: 1px solid {COLORS['error']};
-                    margin-top: 20px;
-                ">
-                """, unsafe_allow_html=True)
-                
+            # Use native container with warning styling
+            with st.container(border=True):
                 st.subheader("🗑️ Delete Course?")
                 st.warning(f"Are you sure you want to delete the course **{course['name']}**? This action cannot be undone.")
                 
@@ -2114,7 +1645,7 @@ def render_courses_page():
                         st.session_state.delete_course_id = None
                         st.rerun()
                 
-                st.markdown("</div>", unsafe_allow_html=True)
+                pass  # Container automatically closes
 
 
 def render_users_page():
@@ -2322,7 +1853,7 @@ def render_admin_certificate_generation():
     user = get_current_user()
     
     # Header with admin context
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Use native container instead of HTML card
     col1, col2, col3 = st.columns([3, 1, 1])
     with col1:
         st.markdown("### Certificate Generation Workflow")
@@ -2336,7 +1867,7 @@ def render_admin_certificate_generation():
                     del st.session_state[key]
             st.session_state.admin_workflow_step = 1
             st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Container automatically closes
     
     # Progress bar for admin workflow
     render_admin_progress_bar(st.session_state.admin_workflow_step)
@@ -2369,16 +1900,14 @@ def render_admin_progress_bar(current_step):
 
 def admin_step1_upload():
     """Admin Step 1: File Upload"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Use native container instead of HTML card
     st.header("Step 1: Upload Data File")
     
-    st.markdown("""
-    <div class="upload-zone">
-        <h3>📤 Upload Your Spreadsheet</h3>
-        <p>Supported formats: CSV, Excel (.xlsx, .xls)</p>
-        <p>Your file should contain participant names and any additional certificate data.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Use native components instead of HTML
+    with st.container(border=True):
+        st.subheader("📤 Upload Your Spreadsheet")
+        st.caption("Supported formats: CSV, Excel (.xlsx, .xls)")
+        st.caption("Your file should contain participant names and any additional certificate data.")
     
     uploaded_file = st.file_uploader(
         "Choose a file",
@@ -2401,7 +1930,7 @@ def admin_step1_upload():
 
 def admin_step2_validate():
     """Admin Step 2: Data Validation"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Use native container instead of HTML card
     st.header("Step 2: Validate Data")
     
     if st.session_state.admin_uploaded_file is None:
@@ -2409,7 +1938,7 @@ def admin_step2_validate():
         if st.button("← Back to Upload", use_container_width=True):
             st.session_state.admin_workflow_step = 1
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Container automatically closes
         return
     
     # Validate the uploaded file
@@ -2458,7 +1987,7 @@ def admin_step2_validate():
 
 def admin_step3_template():
     """Admin Step 3: Template Selection"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Use native container instead of HTML card
     st.header("Step 3: Choose Template")
     
     if st.session_state.admin_validated_data is None:
@@ -2466,7 +1995,7 @@ def admin_step3_template():
         if st.button("← Back to Validation", use_container_width=True):
             st.session_state.admin_workflow_step = 2
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Container automatically closes
         return
     
     # Template selection
@@ -2555,7 +2084,7 @@ def admin_step3_template():
 
 def admin_step4_generate():
     """Admin Step 4: Generate Certificates"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Use native container instead of HTML card
     st.header("Step 4: Generate Certificates")
     
     if st.session_state.admin_selected_template is None:
@@ -2563,7 +2092,7 @@ def admin_step4_generate():
         if st.button("← Back to Template", use_container_width=True):
             st.session_state.admin_workflow_step = 3
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Container automatically closes
         return
     
     # Show generation summary
@@ -2696,12 +2225,12 @@ def admin_step4_generate():
         st.session_state.admin_workflow_step = 3
         st.rerun()
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Container automatically closes
 
 
 def admin_step5_complete():
     """Admin Step 5: Completion"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # Use native container instead of HTML card
     st.header("🎉 Certificates Generated Successfully!")
     
     if st.session_state.admin_generated_files:
