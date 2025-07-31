@@ -64,6 +64,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Deployment version indicator
+DEPLOYMENT_VERSION = "v2.1 - HTML Fix 09dde6d"
+
 # Remove unsafe HTML/CSS injection - use native Streamlit theming
 
 
@@ -2304,7 +2307,8 @@ def main():
     # Display deployment info in sidebar
     with st.sidebar:
         deployment_info = get_deployment_info()
-        st.caption(f"Version: {deployment_info['commit']} | Env: {deployment_info['environment']}")
+        st.caption(f"{DEPLOYMENT_VERSION}")
+        st.caption(f"Commit: {deployment_info['commit'][:7]} | Env: {deployment_info['environment']}")
     
     # Check authentication and determine available pages
     if not is_session_valid():
