@@ -809,23 +809,30 @@ def step4_generate():
                 generated_files = []
                 total = len(st.session_state.validated_data)
                 
-                # Get template path using storage manager
+                # Use programmatic certificate generator
                 try:
-                    template_path = storage.get_template_path(st.session_state.selected_template)
-                    if not template_path:
-                        st.error("Template file not found. Please select a different template.")
-                        return
+                    # Check if using programmatic certificate
+                    if st.session_state.selected_template == "programmatic":
+                        # Use programmatic generation - no template file needed
+                        from certificate_generator_production import generate_certificate_for_app
+                        use_programmatic = True
+                    else:
+                        # Legacy PDF template support
+                        template_path = storage.get_template_path(st.session_state.selected_template)
+                        if not template_path:
+                            st.error("Template file not found. Please select a different template.")
+                            return
+                        generator = PDFGenerator(template_path)
+                        use_programmatic = False
                     
-                    # Initialize PDF generator
-                    generator = PDFGenerator(template_path)
-                    
-                    # Validate template
-                    validation_info = generator.validate_template()
-                    if not validation_info['valid']:
-                        st.error("Template validation failed:")
-                        for error in validation_info['errors']:
-                            st.error(f"• {error}")
-                        return
+                    # Validate template (skip for programmatic)
+                    if not use_programmatic:
+                        validation_info = generator.validate_template()
+                        if not validation_info['valid']:
+                            st.error("Template validation failed:")
+                            for error in validation_info['errors']:
+                                st.error(f"• {error}")
+                            return
                         
                 except Exception as e:
                     st.error(f"Error loading template: {str(e)}")
@@ -862,13 +869,27 @@ def step4_generate():
                         course_name = course_info.get('name', 'Vapes and Vaping')
                         course_id = course_info.get('id')
                         
-                        # Generate the certificate with course information
-                        pdf_path = generator.generate_certificate(
-                            first_name=str(first_name).strip(),
-                            last_name=str(last_name).strip(),
-                            output_path=output_path,
-                            additional_fields={'course': course_name}
-                        )
+                        # Generate the certificate
+                        if use_programmatic:
+                            # Use programmatic generation
+                            pdf_bytes = generate_certificate_for_app(
+                                student_name=f"{first_name} {last_name}".strip(),
+                                course_name=course_name,
+                                score="Pass",
+                                completion_date=datetime.now().strftime("%B %d, %Y")
+                            )
+                            # Save to file
+                            with open(output_path, 'wb') as f:
+                                f.write(pdf_bytes)
+                            pdf_path = output_path
+                        else:
+                            # Use PDF template
+                            pdf_path = generator.generate_certificate(
+                                first_name=str(first_name).strip(),
+                                last_name=str(last_name).strip(),
+                                output_path=output_path,
+                                additional_fields={'course': course_name}
+                            )
                         generated_files.append(pdf_path)
                         
                         # Log certificate generation
@@ -2132,21 +2153,28 @@ def admin_step4_generate():
                     st.error("Template name not found. Please select a valid template.")
                     return
                 
-                template_path = storage.get_template_path(template_name)
-                if not template_path:
-                    st.error("Template file not found. The template may have been deleted.")
-                    return
+                # Check if using programmatic certificate
+                if template_name == "programmatic":
+                    # Use programmatic generation
+                    from certificate_generator_production import generate_certificate_for_app
+                    use_programmatic = True
+                else:
+                    # Legacy PDF template
+                    template_path = storage.get_template_path(template_name)
+                    if not template_path:
+                        st.error("Template file not found. The template may have been deleted.")
+                        return
+                    pdf_generator = PDFGenerator(template_path)
+                    use_programmatic = False
                 
-                # Initialize PDF generator
-                pdf_generator = PDFGenerator(template_path)
-                
-                # Validate template
-                validation_info = pdf_generator.validate_template()
-                if not validation_info['valid']:
-                    st.error("Template validation failed:")
-                    for error in validation_info['errors']:
-                        st.error(f"• {error}")
-                    return
+                # Validate template (skip for programmatic)
+                if not use_programmatic:
+                    validation_info = pdf_generator.validate_template()
+                    if not validation_info['valid']:
+                        st.error("Template validation failed:")
+                        for error in validation_info['errors']:
+                            st.error(f"• {error}")
+                        return
                 
                 # Prepare recipients data
                 recipients = []
@@ -2171,28 +2199,64 @@ def admin_step4_generate():
                     progress_bar.progress(progress)
                     status_text.text(message)
                 
-                results, zip_path = pdf_generator.generate_batch(
-                    recipients=recipients,
-                    progress_callback=update_progress,
-                    parallel=True
-                )
+                if use_programmatic:
+                    # Use programmatic generation for batch
+                    results = []
+                    generated_files = []
+                    
+                    for i, recipient in enumerate(recipients):
+                        try:
+                            update_progress(i, f"Generating certificate for {recipient['first_name']} {recipient['last_name']}")
+                            
+                            # Get course info
+                            course_info = st.session_state.get('admin_selected_course_info', {})
+                            course_name = course_info.get('name', 'Vapes and Vaping')
+                            
+                            # Generate certificate
+                            pdf_bytes = generate_certificate_for_app(
+                                student_name=f"{recipient['first_name']} {recipient['last_name']}".strip(),
+                                course_name=course_name,
+                                score="Pass",
+                                completion_date=datetime.now().strftime("%B %d, %Y")
+                            )
+                            
+                            filename = f"{recipient['first_name']}_{recipient['last_name']}_certificate.pdf"
+                            generated_files.append({
+                                'name': filename,
+                                'content': pdf_bytes
+                            })
+                            
+                        except Exception as e:
+                            st.error(f"Error generating certificate for {recipient['first_name']} {recipient['last_name']}: {str(e)}")
+                    
+                    # Skip the zip_path and results conversion
+                    st.session_state.admin_generated_files = generated_files
+                    
+                else:
+                    # Use PDF template batch generation
+                    results, zip_path = pdf_generator.generate_batch(
+                        recipients=recipients,
+                        progress_callback=update_progress,
+                        parallel=True
+                    )
                 
-                # Convert results to the format expected by admin workflow
-                generated_files = []
-                for i, result in enumerate(results):
-                    if result.success:
-                        # Read the generated file
-                        output_dir = os.path.dirname(zip_path)
-                        file_path = os.path.join(output_dir, result.filename)
-                        
-                        if os.path.exists(file_path):
-                            with open(file_path, 'rb') as f:
-                                generated_files.append({
-                                    'name': result.filename,
-                                    'content': f.read()
-                                })
-                
-                st.session_state.admin_generated_files = generated_files
+                # Convert results to the format expected by admin workflow (only for PDF templates)
+                if not use_programmatic:
+                    generated_files = []
+                    for i, result in enumerate(results):
+                        if result.success:
+                            # Read the generated file
+                            output_dir = os.path.dirname(zip_path)
+                            file_path = os.path.join(output_dir, result.filename)
+                            
+                            if os.path.exists(file_path):
+                                with open(file_path, 'rb') as f:
+                                    generated_files.append({
+                                        'name': result.filename,
+                                        'content': f.read()
+                                    })
+                    
+                    st.session_state.admin_generated_files = generated_files
                 
                 # Log certificate generation
                 storage.log_certificate_generation(
