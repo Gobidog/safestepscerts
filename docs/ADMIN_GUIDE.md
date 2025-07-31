@@ -61,6 +61,8 @@ PDF templates must include:
 - Recommended: Clear space for names
 - Maximum file size: 10MB
 
+**Note**: The "Programmatic Certificate" template is a special system template that doesn't require a PDF file. It generates certificates dynamically using built-in layouts and cannot be deleted or modified through the admin interface.
+
 #### Upload Process
 1. Navigate to Admin Panel
 2. In "Template Management" section:
@@ -254,6 +256,12 @@ When needed:
 - Verify FirstName and LastName fields exist
 - Ensure file size < 10MB
 - Try re-saving PDF with Adobe
+
+#### "Template file not found" for Programmatic Certificate
+- This error was fixed in v1.1.1 - upgrade if still occurring
+- Programmatic certificates don't require PDF files
+- Template name must match exactly: "Programmatic Certificate"
+- Clear browser cache and refresh if issue persists
 
 #### "Cannot change password"
 - Verify current admin password is correct

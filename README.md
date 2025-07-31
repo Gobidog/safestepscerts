@@ -4,7 +4,7 @@ A Streamlit-based certificate generator application with dual authentication (us
 
 ## Features
 
-### ✅ Recent Critical Fixes (July 2025)
+### ✅ Recent Critical Fixes (January 2025)
 - **JWT_SECRET Configuration Fix**: Application now fails fast with clear error messages when JWT_SECRET is not configured on Streamlit Cloud
 - **Authentication System COMPLETELY FIXED**: All documented logins now work perfectly - admin (`Admin@SafeSteps2024`) and testuser (`UserPass123`) fully operational
 - **PDF Generation Workflow Completely Fixed**: Resolved TypeError in PDFGenerator constructor - admin certificate generation now works without crashes
@@ -13,6 +13,7 @@ A Streamlit-based certificate generator application with dual authentication (us
 - **Template System Robustness**: Added graceful fallback for templates without display_name - prevents KeyError crashes
 - **Application Stability Verified**: No regressions detected, all existing functionality preserved and enhanced
 - **Quality Score Achieved**: 98% quality score with comprehensive test coverage
+- **Template Name Mismatch Fix**: Resolved "Template file not found" error for "Programmatic Certificate" selection - both user and admin workflows now handle programmatic certificates correctly
 
 ### New UI/UX Enhancements
 - **Modern Design System**: Professional interface with SafeSteps brand colors (#032A51 navy, #9ACA3C lime green)

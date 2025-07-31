@@ -128,6 +128,23 @@ Before diving into specific issues, try these steps:
 
 ### Certificate Generation Issues
 
+#### "Template file not found" for Programmatic Certificate
+**Symptoms**: Error selecting "Programmatic Certificate" template despite it being listed
+
+**Cause**: Template name comparison mismatch between stored template names and code comparisons
+
+**Solutions**:
+1. **For Users**: This is now fixed in v1.1.1 - try refreshing the page and selecting the template again
+2. **For Admins**: Ensure the template is named exactly "Programmatic Certificate" (not "programmatic")
+3. **For Developers**: Verify string comparisons in app.py use exact template names from storage
+
+**Technical Details (Fixed in v1.1.1)**:
+- User workflow comparison (line 815): Now correctly checks `== "Programmatic Certificate"`
+- Admin workflow comparison (line 2157): Now correctly checks `== "Programmatic Certificate"`
+- Programmatic certificates don't require PDF template files - they use the certificate generator directly
+
+**Note**: This was a critical bug affecting both individual and batch certificate generation. The fix ensures programmatic certificates work correctly without requiring PDF template files.
+
 #### "Generation failed" or stuck on progress
 **Symptoms**: Progress bar stops or shows error
 
@@ -305,7 +322,7 @@ Before diving into specific issues, try these steps:
 | "Generation failed" | Processing error | Check data and retry |
 | "Network error" | Connection issue | Check internet |
 | "Permission denied" | Access restricted | Check user type |
-| "Template not found" | Missing template | Contact admin |
+| "Template not found" | Missing template | Contact admin or check template name matching |
 | "Rate limit exceeded" | Too many requests | Wait 1 minute |
 | "Invalid or missing CSRF token" | Security token expired | Refresh page and retry |
 | "Please login to access this page" | Session lost or expired | Log in again |

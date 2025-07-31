@@ -812,7 +812,7 @@ def step4_generate():
                 # Use programmatic certificate generator
                 try:
                     # Check if using programmatic certificate
-                    if st.session_state.selected_template == "programmatic":
+                    if st.session_state.selected_template == "Programmatic Certificate":
                         # Use programmatic generation - no template file needed
                         from certificate_generator_production import generate_certificate_for_app
                         use_programmatic = True
@@ -2154,7 +2154,7 @@ def admin_step4_generate():
                     return
                 
                 # Check if using programmatic certificate
-                if template_name == "programmatic":
+                if template_name == "Programmatic Certificate":
                     # Use programmatic generation
                     from certificate_generator_production import generate_certificate_for_app
                     use_programmatic = True

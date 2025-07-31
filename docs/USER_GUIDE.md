@@ -90,6 +90,7 @@ If your spreadsheet has a `course` column, templates are automatically suggested
 2. **Professional Certificate** - Formal design with logo space
 3. **Multilingual Certificate** - Supports multiple languages
 4. **Workshop Certificate** - Modern design for training events
+5. **Programmatic Certificate** - Dynamically generated certificates with custom layouts (no PDF template required)
 
 ## Previewing Certificates
 
@@ -103,6 +104,14 @@ Before generating all certificates, preview how they'll look:
    - Overall appearance meets expectations
 4. Close preview to return
 5. Change template if needed
+
+### Special Note: Programmatic Certificates
+If you select "Programmatic Certificate", these are generated dynamically by the system without requiring a PDF template file. They:
+- Use built-in professional layouts
+- Automatically format text for optimal appearance
+- Support custom course information
+- Generate faster than template-based certificates
+- Are fully compatible with all system features
 
 ## Generating Certificates
 
