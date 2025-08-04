@@ -1,0 +1,373 @@
+{
+  "timestamp": "2025-08-01T07:19:13.857382",
+  "total_files": 54,
+  "total_size_bytes": 2140362,
+  "total_size_mb": 2.04,
+  "protected_files_skipped": 26,
+  "categories": {
+    "test_artifacts": {
+      "description": "Temporary test files created during testing",
+      "file_count": 27,
+      "size_bytes": 145125,
+      "size_mb": 0.14,
+      "files": [
+        {
+          "path": "test_template_system.py",
+          "size": 10042,
+          "type": "file",
+          "modified": "2025-07-29T14:28:20.015974"
+        },
+        {
+          "path": "test_logo_certificate.py",
+          "size": 742,
+          "type": "file",
+          "modified": "2025-07-31T06:31:04.996363"
+        },
+        {
+          "path": "test_functional_verification.py",
+          "size": 7203,
+          "type": "file",
+          "modified": "2025-07-31T11:09:36.208993"
+        },
+        {
+          "path": "test_navigation_direct.py",
+          "size": 3068,
+          "type": "file",
+          "modified": "2025-07-28T08:50:16.738492"
+        },
+        {
+          "path": "test_auth_playwright.py",
+          "size": 3202,
+          "type": "file",
+          "modified": "2025-07-29T06:40:17.868227"
+        },
+        {
+          "path": "test_jwt_access.py",
+          "size": 1267,
+          "type": "file",
+          "modified": "2025-07-29T07:41:03.837082"
+        },
+        {
+          "path": "test_current_functionality.py",
+          "size": 5196,
+          "type": "file",
+          "modified": "2025-07-31T15:54:06.889768"
+        },
+        {
+          "path": "test_progress_fix.py",
+          "size": 1034,
+          "type": "file",
+          "modified": "2025-07-31T09:07:56.312505"
+        },
+        {
+          "path": "test_progress_functionality.py",
+          "size": 9928,
+          "type": "file",
+          "modified": "2025-07-31T11:06:25.948179"
+        },
+        {
+          "path": "test_progress_bar_fix.py",
+          "size": 13780,
+          "type": "file",
+          "modified": "2025-07-31T10:58:15.331878"
+        },
+        {
+          "path": "test_progress_bar.py",
+          "size": 628,
+          "type": "file",
+          "modified": "2025-07-30T06:15:03.354846"
+        },
+        {
+          "path": "test_programmatic_integration.py",
+          "size": 2656,
+          "type": "file",
+          "modified": "2025-07-31T04:43:07.394915"
+        },
+        {
+          "path": "test_course_integration.py",
+          "size": 1832,
+          "type": "file",
+          "modified": "2025-07-31T07:10:59.133495"
+        },
+        {
+          "path": "uat_test_progress_bars.py",
+          "size": 13928,
+          "type": "file",
+          "modified": "2025-07-31T10:44:22.485071"
+        },
+        {
+          "path": "streamlit_startup.log",
+          "size": 263,
+          "type": "file",
+          "modified": "2025-07-28T08:10:07.140037"
+        },
+        {
+          "path": "streamlit.log",
+          "size": 12166,
+          "type": "file",
+          "modified": "2025-07-31T16:29:09.102044"
+        },
+        {
+          "path": "streamlit_uat.log",
+          "size": 1711,
+          "type": "file",
+          "modified": "2025-07-28T08:50:25.024618"
+        },
+        {
+          "path": "app.log",
+          "size": 5703,
+          "type": "file",
+          "modified": "2025-07-31T09:53:39.370014"
+        },
+        {
+          "path": "streamlit_app.log",
+          "size": 10709,
+          "type": "file",
+          "modified": "2025-07-31T15:55:28.378892"
+        },
+        {
+          "path": "streamlit_startup.log",
+          "size": 263,
+          "type": "file",
+          "modified": "2025-07-28T08:10:07.140037"
+        },
+        {
+          "path": "streamlit.log",
+          "size": 12166,
+          "type": "file",
+          "modified": "2025-07-31T16:29:09.102044"
+        },
+        {
+          "path": "streamlit_uat.log",
+          "size": 1711,
+          "type": "file",
+          "modified": "2025-07-28T08:50:25.024618"
+        },
+        {
+          "path": "streamlit_app.log",
+          "size": 10709,
+          "type": "file",
+          "modified": "2025-07-31T15:55:28.378892"
+        },
+        {
+          "path": "app.log",
+          "size": 5703,
+          "type": "file",
+          "modified": "2025-07-31T09:53:39.370014"
+        },
+        {
+          "path": "smoke_test.py",
+          "size": 1744,
+          "type": "file",
+          "modified": "2025-07-31T09:08:50.519316"
+        },
+        {
+          "path": "manual_uat_verification.py",
+          "size": 6729,
+          "type": "file",
+          "modified": "2025-07-31T16:05:23.393369"
+        },
+        {
+          "path": "playwright_auth_test.js",
+          "size": 1042,
+          "type": "file",
+          "modified": "2025-07-29T06:41:07.277020"
+        }
+      ]
+    },
+    "agent_status_files": {
+      "description": "V.E.R.I.F.Y. agent temporary files",
+      "file_count": 8,
+      "size_bytes": 18043,
+      "size_mb": 0.02,
+      "files": [
+        {
+          "path": "PROBLEM_INSIGHT_MESSAGES.json",
+          "size": 1098,
+          "type": "file",
+          "modified": "2025-07-31T07:17:55.772192"
+        },
+        {
+          "path": "SUPERVISOR_MESSAGES.json",
+          "size": 858,
+          "type": "file",
+          "modified": "2025-07-29T18:19:28.742637"
+        },
+        {
+          "path": "CODE_IMPLEMENTATION_MESSAGES.json",
+          "size": 3528,
+          "type": "file",
+          "modified": "2025-08-01T06:54:56.208732"
+        },
+        {
+          "path": "DOCUMENTATION_MESSAGES.json",
+          "size": 2311,
+          "type": "file",
+          "modified": "2025-08-01T07:11:12.131441"
+        },
+        {
+          "path": "SYSTEM_RUNTIME_MESSAGES.json",
+          "size": 2335,
+          "type": "file",
+          "modified": "2025-08-01T07:11:12.130441"
+        },
+        {
+          "path": "SYSTEM_VERIFICATION_MESSAGES.json",
+          "size": 4720,
+          "type": "file",
+          "modified": "2025-08-01T07:00:36.868477"
+        },
+        {
+          "path": "SUPERVISOR_MESSAGES.json",
+          "size": 858,
+          "type": "file",
+          "modified": "2025-07-29T18:19:28.742637"
+        },
+        {
+          "path": "SYSTEM_RUNTIME_MESSAGES.json",
+          "size": 2335,
+          "type": "file",
+          "modified": "2025-08-01T07:11:12.130441"
+        }
+      ]
+    },
+    "temporary_data": {
+      "description": "Temporary data and cache files",
+      "file_count": 8,
+      "size_bytes": 1942539,
+      "size_mb": 1.85,
+      "files": [
+        {
+          "path": "context_bridge.json",
+          "size": 1746,
+          "type": "file",
+          "modified": "2025-07-29T17:51:35.428603"
+        },
+        {
+          "path": "messaging_init.json",
+          "size": 53,
+          "type": "file",
+          "modified": "2025-07-28T13:40:16.293542"
+        },
+        {
+          "path": "streamlit.pid",
+          "size": 7,
+          "type": "file",
+          "modified": "2025-07-28T17:05:51.970576"
+        },
+        {
+          "path": "temp/",
+          "size": 251164,
+          "type": "directory",
+          "modified": "2025-08-01T06:46:57.553021"
+        },
+        {
+          "path": "node_modules/",
+          "size": 95398,
+          "type": "directory",
+          "modified": "2025-07-28T13:07:10.275549"
+        },
+        {
+          "path": "htmlcov/",
+          "size": 1506020,
+          "type": "directory",
+          "modified": "2025-07-31T07:22:04.792986"
+        },
+        {
+          "path": "coverage.xml",
+          "size": 88151,
+          "type": "file",
+          "modified": "2025-07-31T11:08:53.656364"
+        },
+        {
+          "path": "MagicMock/",
+          "size": 0,
+          "type": "directory",
+          "modified": "2025-07-31T07:22:03.912972"
+        }
+      ]
+    },
+    "test_certificates": {
+      "description": "Test certificate files",
+      "file_count": 10,
+      "size_bytes": 29973,
+      "size_mb": 0.03,
+      "files": [
+        {
+          "path": "test_certificate_2.pdf",
+          "size": 3009,
+          "type": "file",
+          "modified": "2025-07-31T04:42:17.386372"
+        },
+        {
+          "path": "test_certificate_after_fix.pdf",
+          "size": 3339,
+          "type": "file",
+          "modified": "2025-07-31T05:37:53.149351"
+        },
+        {
+          "path": "test_certificate_1.pdf",
+          "size": 2931,
+          "type": "file",
+          "modified": "2025-07-31T04:42:17.384372"
+        },
+        {
+          "path": "test_certificate_with_logo.pdf",
+          "size": 3351,
+          "type": "file",
+          "modified": "2025-07-31T06:31:11.120445"
+        },
+        {
+          "path": "marshall_newton_certificate.pdf",
+          "size": 2937,
+          "type": "file",
+          "modified": "2025-07-31T05:10:50.059615"
+        },
+        {
+          "path": "marshall_newton_app_certificate.pdf",
+          "size": 2937,
+          "type": "file",
+          "modified": "2025-07-31T05:10:50.060615"
+        },
+        {
+          "path": "programmatic_certificate.pdf",
+          "size": 2940,
+          "type": "file",
+          "modified": "2025-07-31T04:40:44.271344"
+        },
+        {
+          "path": "programmatic_certificate_sample.pdf",
+          "size": 2586,
+          "type": "file",
+          "modified": "2025-07-31T04:37:54.333399"
+        },
+        {
+          "path": "test_integration_basic_test.pdf",
+          "size": 2934,
+          "type": "file",
+          "modified": "2025-07-31T04:43:14.769995"
+        },
+        {
+          "path": "test_integration_long_names.pdf",
+          "size": 3009,
+          "type": "file",
+          "modified": "2025-07-31T04:43:14.770995"
+        }
+      ]
+    },
+    "messages_dir": {
+      "description": "Agent messages directory",
+      "file_count": 1,
+      "size_bytes": 4682,
+      "size_mb": 0.0,
+      "files": [
+        {
+          "path": "MESSAGES/",
+          "size": 4682,
+          "type": "directory",
+          "modified": "2025-07-28T16:35:30.540006"
+        }
+      ]
+    }
+  }
+}

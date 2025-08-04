@@ -47,6 +47,8 @@ from utils.storage import StorageManager
 from utils.deployment_info import get_deployment_info
 from utils.ui_components import apply_custom_css, create_progress_steps, COLORS
 from utils.course_manager import CourseManager
+from utils.version_manager import VersionManager
+from utils.mobile_optimization import apply_global_mobile_optimizations, get_device_info
 from config import config
 import time
 
@@ -61,7 +63,12 @@ st.set_page_config(
     page_title="SafeSteps Certificate Generator",
     page_icon="🏆",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="auto",  # Mobile-friendly: auto-collapse on mobile
+    menu_items={
+        'Get Help': 'https://safesteps.help',
+        'Report a bug': 'https://safesteps.support',
+        'About': '# SafeSteps Mobile-Optimized Certificate Generator\nDesigned for excellent mobile user experience with 44px+ touch targets.'
+    }
 )
 
 # Deployment version indicator
@@ -851,8 +858,8 @@ def step4_generate():
                     # Generate certificate
                     try:
                         # Extract name fields - handle various column name formats
-                        first_name = row.get('First Name', row.get('first name', row.get('FirstName', '')))
-                        last_name = row.get('Last Name', row.get('last name', row.get('LastName', '')))
+                        first_name = row.get('first_name', row.get('First Name', row.get('first name', row.get('FirstName', ''))))
+                        last_name = row.get('last_name', row.get('Last Name', row.get('last name', row.get('LastName', ''))))
                         
                         # Skip if no names
                         if not first_name and not last_name:
@@ -2114,6 +2121,14 @@ def admin_step4_generate():
     # Use native container instead of HTML card
     st.header("Step 4: Generate Certificates")
     
+    # Initialize session state if needed
+    if 'admin_validated_data' not in st.session_state:
+        st.session_state.admin_validated_data = None
+    if 'admin_selected_template' not in st.session_state:
+        st.session_state.admin_selected_template = None
+    if 'admin_generated_files' not in st.session_state:
+        st.session_state.admin_generated_files = []
+    
     if st.session_state.admin_selected_template is None:
         st.error("No template selected. Please complete previous steps.")
         if st.button("← Back to Template", use_container_width=True):
@@ -2141,6 +2156,9 @@ def admin_step4_generate():
         st.info(f"**Course:** {course_name}")
     
     # Generate button
+    if 'admin_generated_files' not in st.session_state:
+        st.session_state.admin_generated_files = []
+    
     if len(st.session_state.admin_generated_files) == 0:
         if st.button("🏆 Generate Certificates", type="primary", use_container_width=True):
             progress_bar = st.progress(0)
@@ -2180,8 +2198,8 @@ def admin_step4_generate():
                 recipients = []
                 for idx, row in st.session_state.admin_validated_data.iterrows():
                     # Handle various column name formats
-                    first_name = row.get('First Name', row.get('first name', row.get('FirstName', '')))
-                    last_name = row.get('Last Name', row.get('last name', row.get('LastName', '')))
+                    first_name = row.get('first_name', row.get('First Name', row.get('first name', row.get('FirstName', ''))))
+                    last_name = row.get('last_name', row.get('Last Name', row.get('last name', row.get('LastName', ''))))
                     
                     if first_name or last_name:
                         recipients.append({
@@ -2206,7 +2224,7 @@ def admin_step4_generate():
                     
                     for i, recipient in enumerate(recipients):
                         try:
-                            update_progress(i, f"Generating certificate for {recipient['first_name']} {recipient['last_name']}")
+                            update_progress(i, len(recipients), f"Generating certificate for {recipient['first_name']} {recipient['last_name']}")
                             
                             # Get course info
                             course_info = st.session_state.get('admin_selected_course_info', {})
@@ -2303,6 +2321,10 @@ def admin_step5_complete():
     # Use native container instead of HTML card
     st.header("🎉 Certificates Generated Successfully!")
     
+    # Initialize session state if needed
+    if 'admin_generated_files' not in st.session_state:
+        st.session_state.admin_generated_files = []
+    
     if st.session_state.admin_generated_files:
         st.success(f"Generated {len(st.session_state.admin_generated_files)} certificates")
         
@@ -2325,14 +2347,15 @@ def admin_step5_complete():
                     )
         
         # Batch download as ZIP
-        if st.button("📦 Download All as ZIP", type="primary", use_container_width=True):
-            zip_data = create_zip_archive(st.session_state.admin_generated_files)
-            st.download_button(
-                "Download ZIP Archive",
-                data=zip_data,
-                file_name=f"certificates_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
-                mime="application/zip"
-            )
+        zip_data = create_zip_archive(st.session_state.admin_generated_files)
+        st.download_button(
+            "📦 Download All Certificates as ZIP",
+            data=zip_data,
+            file_name=f"certificates_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+            mime="application/zip",
+            type="primary",
+            use_container_width=True
+        )
     
     # Actions
     col1, col2 = st.columns(2)
@@ -2367,6 +2390,10 @@ def create_zip_archive(files):
 
 def main():
     """Main application entry point with modern navigation"""
+    # Apply global mobile optimizations first
+    apply_custom_css()
+    mobile_optimizer = apply_global_mobile_optimizations()
+    
     # Initialize session state for navigation
     if 'current_page' not in st.session_state:
         st.session_state.current_page = None
@@ -2384,28 +2411,79 @@ def main():
         pg = st.navigation([login_page_func])
     else:
         user = get_current_user()
+        
+        # Initialize version manager
+        version_manager = VersionManager()
+        
+        # Add version selector in sidebar
+        with st.sidebar:
+            st.markdown("### 🎨 UI Version")
+            selected_version = st.selectbox(
+                "Choose UI Experience:",
+                options=["Version 3: Modern Dashboard", "Version 1: Streamlined Efficiency", "Version 2: User-Friendly Guidance", "Legacy UI"],
+                index=0,
+                help="Try different UI versions to find your preferred experience"
+            )
+            
+            if selected_version != "Legacy UI":
+                version_info = version_manager.get_version_info(selected_version.split(":")[0].strip())
+                if version_info:
+                    st.info(f"**{version_info['name']}**\n\n{version_info['description']}")
+        
         if user and user.get("role") == "admin":
             # Admin user - show admin navigation
-            dashboard_page = st.Page(render_dashboard, title="Dashboard", icon="📊", default=True)
+            if selected_version == "Legacy UI":
+                dashboard_page = st.Page(render_dashboard, title="Dashboard", icon="📊", default=True)
+            elif selected_version.startswith("Version 1"):
+                from pages.dashboard_v1_efficiency import render_dashboard_v1
+                dashboard_page = st.Page(render_dashboard_v1, title="Dashboard V1", icon="⚡", default=True)
+            elif selected_version.startswith("Version 2"):
+                from pages.dashboard_v2_guided import render_dashboard_v2
+                dashboard_page = st.Page(render_dashboard_v2, title="Dashboard V2", icon="🎓", default=True)
+            elif selected_version.startswith("Version 3"):
+                from pages.dashboard_v3_modern import render_dashboard_v3
+                dashboard_page = st.Page(render_dashboard_v3, title="Dashboard V3", icon="🎨", default=True)
+            
             generate_page = st.Page(render_admin_certificate_generation, title="Generate Certificates", icon="🏆")
             templates_page = st.Page(render_templates_page, title="Templates", icon="📄")
             courses_page = st.Page(render_courses_page, title="Courses", icon="📚")
             users_page = st.Page(render_users_page, title="Users", icon="👥")
             analytics_page = st.Page(render_analytics_page, title="Analytics", icon="📈")
             settings_page = st.Page(render_settings_page, title="Settings", icon="⚙️")
+            
+            # Add flexible workflow engine demo
+            from pages.workflow_engine_demo import render_workflow_engine_demo
+            workflow_demo_page = st.Page(render_workflow_engine_demo, title="Workflow Engine Demo", icon="🚀")
+            
             logout_page = st.Page(logout_action, title="Logout", icon="🚪")
             
             pg = st.navigation({
                 "Admin": [dashboard_page, generate_page, templates_page, courses_page, users_page],
+                "Advanced": [workflow_demo_page],
                 "System": [analytics_page, settings_page, logout_page]
             })
         else:
             # Regular user - show user workflow
-            generate_page = st.Page(user_workflow, title="Generate Certificates", icon="🏆", default=True)
+            if selected_version == "Legacy UI":
+                generate_page = st.Page(user_workflow, title="Generate Certificates", icon="🏆", default=True)
+            elif selected_version.startswith("Version 1"):
+                from pages.user_workflow_v1_express import render_user_workflow_v1
+                generate_page = st.Page(render_user_workflow_v1, title="Express Workflow", icon="⚡", default=True)
+            elif selected_version.startswith("Version 2"):
+                from pages.user_workflow_v2_wizard import render_user_workflow_v2
+                generate_page = st.Page(render_user_workflow_v2, title="Guided Workflow", icon="🎓", default=True)
+            elif selected_version.startswith("Version 3"):
+                from pages.user_workflow_v3_visual import render_user_workflow_v3
+                generate_page = st.Page(render_user_workflow_v3, title="Visual Workflow", icon="🎨", default=True)
+            
+            # Add flexible workflow engine for all users
+            from pages.workflow_engine_demo import render_workflow_engine_demo
+            workflow_demo_page = st.Page(render_workflow_engine_demo, title="Flexible Workflow", icon="🚀")
+                
             logout_page = st.Page(logout_action, title="Logout", icon="🚪")
             
             pg = st.navigation({
-                "Certificate Generator": [generate_page],
+                "Certificate Generator": [generate_page, workflow_demo_page],
                 "Account": [logout_page]
             })
     
