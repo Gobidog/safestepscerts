@@ -2532,13 +2532,13 @@ def main():
             # Always use the working dashboard - other versions were removed
             dashboard_page = st.Page(render_dashboard, title="Dashboard", icon="📊", default=True)
             
-            # Import certificate generation with help system
-            from pages.certificate_generation_with_help import render_certificate_generation
-            cert_gen_with_help = st.Page(render_certificate_generation, title="🏆 Certificate Generator", icon="🏆")
+            # Comment out pages that don't exist on server
+            # These pages exist locally but cause import errors on Streamlit Cloud
+            # from pages.certificate_generation_with_help import render_certificate_generation
+            # cert_gen_with_help = st.Page(render_certificate_generation, title="🏆 Certificate Generator", icon="🏆")
             
-            # Import Express Mode
-            from pages.express_mode import render_express_mode
-            express_page = st.Page(render_express_mode, title="⚡ Express Mode", icon="⚡")
+            # from pages.express_mode import render_express_mode
+            # express_page = st.Page(render_express_mode, title="⚡ Express Mode", icon="⚡")
             
             generate_page = st.Page(render_admin_certificate_generation, title="Legacy Generate", icon="📋")
             templates_page = st.Page(render_templates_page, title="Templates", icon="📄")
@@ -2552,7 +2552,9 @@ def main():
             logout_page = st.Page(logout_action, title="Logout", icon="🚪")
             
             pg = st.navigation({
-                "Certificate Generation": [cert_gen_with_help, express_page, generate_page],
+                # Commented out pages that don't exist on server
+                # "Certificate Generation": [cert_gen_with_help, express_page, generate_page],
+                "Certificate Generation": [generate_page],
                 "Admin": [dashboard_page, templates_page, courses_page, users_page],
                 "System": [analytics_page, settings_page, logout_page]
             })
