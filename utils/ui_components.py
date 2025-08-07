@@ -208,6 +208,152 @@ def apply_custom_css():
         box-shadow: none !important;
     }
     
+    /* Enhanced Selectbox/Dropdown Visibility */
+    .stSelectbox > div > div > div {
+        background-color: white !important;
+        border: 2px solid #64748B !important;
+        border-radius: 8px !important;
+        min-height: 48px !important;
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        padding: 8px 12px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .stSelectbox > div > div > div:hover {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2) !important;
+    }
+    
+    .stSelectbox > div > div > div:focus-within {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+        outline: none !important;
+    }
+    
+    /* Enhanced Text Input Fields */
+    .stTextInput > div > div > input {
+        background-color: white !important;
+        border: 2px solid #64748B !important;
+        border-radius: 8px !important;
+        min-height: 48px !important;
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        padding: 12px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .stTextInput > div > div > input:hover {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2) !important;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+        outline: none !important;
+    }
+    
+    /* Enhanced Text Area */
+    .stTextArea > div > div > textarea {
+        background-color: white !important;
+        border: 2px solid #64748B !important;
+        border-radius: 8px !important;
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        padding: 12px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .stTextArea > div > div > textarea:hover {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2) !important;
+    }
+    
+    .stTextArea > div > div > textarea:focus {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+        outline: none !important;
+    }
+    
+    /* Enhanced File Uploader */
+    .stFileUploader > div {
+        border: 2px dashed #64748B !important;
+        border-radius: 12px !important;
+        background-color: #F8FAFC !important;
+        min-height: 120px !important;
+        padding: 24px !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .stFileUploader > div:hover {
+        border-color: #3B82F6 !important;
+        background-color: #EFF6FF !important;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+    }
+    
+    .stFileUploader > div > div > button {
+        background-color: #3B82F6 !important;
+        color: white !important;
+        font-weight: 600 !important;
+        min-height: 44px !important;
+        border-radius: 8px !important;
+        padding: 10px 20px !important;
+    }
+    
+    /* Enhanced Radio Buttons */
+    .stRadio > div {
+        gap: 12px !important;
+    }
+    
+    .stRadio > div > label {
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        padding: 12px 16px !important;
+        border: 2px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        background-color: white !important;
+    }
+    
+    .stRadio > div > label:hover {
+        border-color: #3B82F6 !important;
+        background-color: #F0F9FF !important;
+    }
+    
+    /* Enhanced Checkbox */
+    .stCheckbox > label {
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+    }
+    
+    .stCheckbox > label > div[data-testid="stCheckbox"] > svg {
+        width: 24px !important;
+        height: 24px !important;
+        border: 2px solid #64748B !important;
+        border-radius: 4px !important;
+    }
+    
+    /* Enhanced Number Input */
+    .stNumberInput > div > div > input {
+        background-color: white !important;
+        border: 2px solid #64748B !important;
+        border-radius: 8px !important;
+        min-height: 48px !important;
+        font-size: 16px !important;
+        font-weight: 500 !important;
+        padding: 12px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .stNumberInput > div > div > input:focus {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+        outline: none !important;
+    }
+    
     /* Mobile Optimizations - Enhanced for 44px+ Touch Targets */
     @media (max-width: 768px) {
         .stButton > button {
@@ -347,8 +493,13 @@ def create_status_badge(status: str, type: str = 'default'):
     
     return badge_text  # Return text for compatibility
 
-def create_progress_steps(steps: List[Tuple[str, str, int]], current_step: int):
+def create_progress_steps(steps: List[Tuple[str, str, int]], current_step: int, enable_navigation: bool = True):
     """Create an enhanced progress indicator using native Streamlit components"""
+    import streamlit as st
+    
+    if not steps:
+        return
+    
     cols = st.columns(len(steps))
     
     for idx, (label, icon, step_num) in enumerate(steps):
@@ -367,20 +518,29 @@ def create_progress_steps(steps: List[Tuple[str, str, int]], current_step: int):
                 status_icon = str(step_num)
                 status_text = 'Pending'
             
-            # Create step using native Streamlit components
+            # Create step using native Streamlit components with navigation
             with st.container():
                 # Center content using columns
                 col1, col2, col3 = st.columns([1, 2, 1])
                 with col2:
                     st.markdown(icon)  # No HTML, just the emoji/icon
                 
-                # Status indicator
-                if status == 'completed':
-                    st.success(f"{status_icon} {label}")
+                # Enhanced status indicator with navigation capability
+                if enable_navigation and status == 'completed':
+                    # Make completed steps clickable for navigation
+                    if st.button(f"{status_icon} {label}", key=f"nav_step_{step_num}", 
+                               type="secondary", use_container_width=True,
+                               help=f"Click to go back to {label}"):
+                        import streamlit as st
+                        st.session_state.workflow_step = step_num
+                        st.rerun()
                 elif status == 'active':
                     st.info(f"{status_icon} {label}")
+                    st.caption("Current Step")
                 else:
                     st.markdown(f"{status_icon} {label}")
+                    if status == 'pending':
+                        st.caption("Not Started")
 
 def create_loading_animation(text: str = "Loading..."):
     """Create a custom loading animation using native components"""
@@ -460,6 +620,184 @@ def create_table_header(columns: List[Dict[str, str]]):
         with cols[idx]:
             # Use native Streamlit subheader for table headers
             st.subheader(col['label'].upper(), divider=True)
+
+def create_help_tooltip(content: str, trigger_text: str = "ℹ️ Help", help_type: str = "info"):
+    """Create a help tooltip using native Streamlit components"""
+    text = content
+    # Choose icon and color based on help type
+    if help_type == "tip":
+        icon = "💡"
+        color = COLORS['success']
+    elif help_type == "warning":
+        icon = "⚠️"
+        color = COLORS['warning']
+    elif help_type == "error":
+        icon = "❌"
+        color = COLORS['error']
+    else:
+        icon = "ℹ️"
+        color = COLORS['info']
+    
+    # Create tooltip using expander (native Streamlit)
+    with st.expander(f"{icon} Help", expanded=False):
+        st.markdown(text)
+
+def create_inline_help(content: str, help_type: str = "info"):
+    """Create inline help using native Streamlit components"""
+    if help_type == "tip":
+        st.success(f"💡 **Tip:** {content}")
+    elif help_type == "warning":
+        st.warning(f"⚠️ **Important:** {content}")
+    elif help_type == "error":
+        st.error(f"❌ **Error:** {content}")
+    else:
+        st.info(f"ℹ️ **Info:** {content}")
+
+def create_contextual_help_panel(title: str, content: str, expanded: bool = False):
+    """Create a contextual help panel that can be expanded"""
+    with st.expander(f"📖 {title}", expanded=expanded):
+        st.markdown(content)
+
+def create_help_icon(tooltip_text: str, key: str):
+    """Create a small help icon with tooltip"""
+    return st.button("ℹ️", key=key, help=tooltip_text, type="secondary")
+
+def create_error_recovery_card(error_type: str, recovery_steps: List[str]):
+    """Create an error recovery guidance card"""
+    with st.container(border=True):
+        st.error(f"🔧 **How to fix: {error_type}**")
+        
+        st.markdown("**Follow these steps:**")
+        for i, step in enumerate(recovery_steps, 1):
+            st.markdown(f"{i}. {step}")
+        
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            if st.button("✅ I fixed it", key=f"fixed_{error_type}"):
+                st.success("Great! Try again now.")
+
+def create_step_help_sidebar(step_number: int, help_content: Dict[str, any]):
+    """Create step-specific help in sidebar"""
+    with st.sidebar:
+        st.markdown(f"### Step {step_number} Help")
+        
+        if 'tips' in help_content:
+            st.markdown("**💡 Tips:**")
+            for tip in help_content['tips']:
+                st.markdown(f"• {tip}")
+        
+        if 'common_errors' in help_content:
+            st.markdown("**⚠️ Watch out for:**")
+            for error in help_content['common_errors']:
+                st.markdown(f"• {error}")
+        
+        if 'examples' in help_content:
+            st.markdown("**📝 Examples:**")
+            for example in help_content['examples']:
+                st.code(example, language='text')
+
+def create_mode_selector_with_help():
+    """Create a mode selector with integrated help"""
+    st.subheader("🎯 Choose Your Workflow")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        with st.container(border=True):
+            st.markdown("### ⚡ Express Mode")
+            st.markdown("**For experienced users**")
+            st.markdown("• Single page workflow")
+            st.markdown("• 3 clicks maximum")
+            st.markdown("• Under 2 minutes")
+            
+            if st.button("🚀 Start Express", key="select_express", type="primary", use_container_width=True):
+                st.session_state['selected_mode'] = 'express'
+                st.rerun()
+    
+    with col2:
+        with st.container(border=True):
+            st.markdown("### 📚 Enhanced Guided Mode")
+            st.markdown("**For new users or complex data**")
+            st.markdown("• Step-by-step guidance")
+            st.markdown("• Extra validation")
+            st.markdown("• Save and resume")
+            
+            if st.button("🎓 Start Guided", key="select_guided", type="secondary", use_container_width=True):
+                st.session_state['selected_mode'] = 'guided'
+                st.rerun()
+    
+    # Help section
+    create_contextual_help_panel(
+        "Which mode should I choose?",
+        """
+        **Choose Express Mode if:**
+        • You generate certificates regularly
+        • You have standard CSV files ready
+        • You know which templates to use
+        • You want maximum speed
+        
+        **Choose Guided Mode if:**
+        • This is your first time using SafeSteps
+        • You're unsure about file formats
+        • You want confirmation at each step
+        • You're working with complex data
+        • You want to learn the system thoroughly
+        
+        **You can always switch between modes later!**
+        """
+    )
+
+def create_file_format_help_card():
+    """Create a comprehensive file format help card"""
+    with st.expander("📋 File Format Requirements", expanded=False):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**✅ Supported Formats:**")
+            st.markdown("• CSV files (.csv)")
+            st.markdown("• Excel files (.xlsx, .xls)")
+            st.markdown("• Maximum size: 10MB")
+            
+            st.markdown("**📋 Required Columns:**")
+            st.markdown("• **Name**: Participant's full name")
+            st.markdown("• **Email**: Valid email address")
+            
+            st.markdown("**📋 Optional Columns:**")
+            st.markdown("• **Course**: Course name or code")
+            st.markdown("• **Date**: Completion date (YYYY-MM-DD)")
+            st.markdown("• **Score**: Numeric score")
+            st.markdown("• **Grade**: Letter grade or text")
+        
+        with col2:
+            st.markdown("**❌ Common Issues:**")
+            st.markdown("• Empty rows between data")
+            st.markdown("• Missing column headers")
+            st.markdown("• Wrong date format")
+            st.markdown("• File open in Excel")
+            st.markdown("• Special characters in names")
+            
+            st.markdown("**✅ Example CSV:**")
+            st.code("""
+Name,Email,Course,Date
+John Smith,john@example.com,Safety Training,2025-01-15
+Jane Doe,jane@example.com,First Aid Course,2025-01-15
+""", language='csv')
+        
+        # Template download
+        st.markdown("---")
+        template_csv = "Name,Email,Course,Date\nJohn Smith,john@example.com,Safety Training 101,2025-01-15\nJane Doe,jane@example.com,First Aid Course,2025-01-15"
+        
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("**🎯 Pro Tip:** Use our template to avoid formatting issues")
+        with col2:
+            st.download_button(
+                label="📥 Download Template",
+                data=template_csv,
+                file_name="safesteps_template.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
 def create_action_menu(actions: List[Dict[str, any]], key_prefix: str):
     """Create an action menu with icons"""
@@ -849,12 +1187,8 @@ def create_save_resume_panel(workflow_id: str, auto_save_enabled: bool = True):
     
     with col1:
         if st.button("💾 Save Now", use_container_width=True, type="primary"):
-            from utils.workflow_engine import save_workflow_state
-            if save_workflow_state(workflow_id):
-                st.success("✅ Saved!")
-                st.balloons()
-            else:
-                st.error("❌ Save failed")
+            # Workflow engine removed - save functionality disabled
+            st.info("ℹ️ Save feature disabled - workflow engine removed")
     
     with col2:
         auto_save = st.toggle("🔄 Auto-save", value=auto_save_enabled, help="Save progress every 30 seconds")
@@ -863,17 +1197,8 @@ def create_save_resume_panel(workflow_id: str, auto_save_enabled: bool = True):
     
     with col3:
         if st.button("📋 Export Progress", use_container_width=True):
-            # Export workflow state as JSON
-            from utils.workflow_engine import get_workflow_state
-            state = get_workflow_state(workflow_id)
-            if state:
-                st.download_button(
-                    "⬇️ Download",
-                    data=json.dumps(state, indent=2),
-                    file_name=f"workflow_{workflow_id[:8]}.json",
-                    mime="application/json",
-                    use_container_width=True
-                )
+            # Workflow engine removed - export functionality disabled
+            st.info("ℹ️ Export feature disabled - workflow engine removed")
     
     # Auto-save indicator
     if auto_save:
@@ -948,17 +1273,13 @@ def create_keyboard_shortcuts_panel(shortcuts: Dict):
         
         st.info("💡 **Tip:** Use shortcuts to navigate quickly through your workflow!")
 
-def create_workflow_analytics_panel(user_id: str, workflow_engine):
+def create_workflow_analytics_panel(user_id: str, workflow_engine=None):
     """
-    Create workflow analytics and insights panel
+    Create workflow analytics and insights panel (disabled - workflow engine removed)
     """
     st.subheader("📈 Workflow Analytics")
-    
-    # Get user behavior data
-    behavior = workflow_engine.user_behaviors.get(user_id)
-    if not behavior:
-        st.info("Complete a few workflows to see your analytics!")
-        return
+    st.info("ℹ️ Analytics disabled - workflow engine removed")
+    return
     
     # Stats overview
     col1, col2, col3, col4 = st.columns(4)

@@ -42,12 +42,15 @@ from utils.auth import (
     delete_user
 )
 from utils.validators import SpreadsheetValidator
-from utils.pdf_generator import PDFGenerator
+# PDFGenerator removed - using programmatic generation only
 from utils.storage import StorageManager
 from utils.deployment_info import get_deployment_info
 from utils.ui_components import apply_custom_css, create_progress_steps, COLORS
 from utils.course_manager import CourseManager
 from utils.version_manager import VersionManager
+import json
+import pickle
+import base64
 from utils.mobile_optimization import apply_global_mobile_optimizations, get_device_info
 from config import config
 import time
@@ -57,6 +60,152 @@ storage = StorageManager()
 
 # Initialize course manager
 course_manager = CourseManager(storage.local_path / "metadata")
+
+# Enhanced Guided Mode: Save/Resume Functions
+def save_workflow_state():
+    """Save current workflow state for resume functionality"""
+    try:
+        current_user = get_current_user()
+        user_id = current_user.get('username', 'anonymous') if current_user else 'anonymous'
+        
+        workflow_state = {
+            'workflow_step': st.session_state.get('workflow_step', 1),
+            'selected_template': st.session_state.get('selected_template'),
+            'selected_template_info': st.session_state.get('selected_template_info'),
+            'selected_course_info': st.session_state.get('selected_course_info'),
+            'file_upload_state': st.session_state.get('file_upload_state', 'ready'),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Handle uploaded file data
+        if st.session_state.get('uploaded_file'):
+            try:
+                file_data = st.session_state.uploaded_file.getvalue()
+                workflow_state['uploaded_file_data'] = base64.b64encode(file_data).decode('utf-8')
+                workflow_state['uploaded_file_name'] = st.session_state.uploaded_file.name
+            except Exception as e:
+                logger.warning(f"Could not save uploaded file: {e}")
+        
+        # Handle validated data
+        if st.session_state.get('validated_data') is not None:
+            try:
+                workflow_state['validated_data_json'] = st.session_state.validated_data.to_json(orient='records')
+            except Exception as e:
+                logger.warning(f"Could not save validated data: {e}")
+        
+        st.session_state[f'saved_workflow_{user_id}'] = workflow_state
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error saving workflow state: {e}")
+        return False
+
+def load_workflow_state():
+    """Load saved workflow state for resume functionality"""
+    try:
+        current_user = get_current_user()
+        user_id = current_user.get('username', 'anonymous') if current_user else 'anonymous'
+        
+        saved_state = st.session_state.get(f'saved_workflow_{user_id}')
+        
+        if saved_state:
+            st.session_state.workflow_step = saved_state.get('workflow_step', 1)
+            st.session_state.selected_template = saved_state.get('selected_template')
+            st.session_state.selected_template_info = saved_state.get('selected_template_info')
+            st.session_state.selected_course_info = saved_state.get('selected_course_info')
+            st.session_state.file_upload_state = saved_state.get('file_upload_state', 'ready')
+            
+            # Restore uploaded file data
+            if saved_state.get('uploaded_file_data'):
+                try:
+                    import io
+                    file_data = base64.b64decode(saved_state['uploaded_file_data'])
+                    uploaded_file = io.BytesIO(file_data)
+                    uploaded_file.name = saved_state.get('uploaded_file_name', 'uploaded_file')
+                    st.session_state.uploaded_file_restored = True
+                    st.session_state.uploaded_file_name = saved_state.get('uploaded_file_name')
+                    st.session_state.uploaded_file_data = file_data
+                except Exception as e:
+                    logger.warning(f"Could not restore uploaded file: {e}")
+            
+            # Restore validated data
+            if saved_state.get('validated_data_json'):
+                try:
+                    import pandas as pd
+                    st.session_state.validated_data = pd.read_json(saved_state['validated_data_json'], orient='records')
+                except Exception as e:
+                    logger.warning(f"Could not restore validated data: {e}")
+            
+            return True
+            
+    except Exception as e:
+        logger.error(f"Error loading workflow state: {e}")
+    
+    return False
+
+def clear_workflow_state():
+    """Clear saved workflow state"""
+    try:
+        current_user = get_current_user()
+        user_id = current_user.get('username', 'anonymous') if current_user else 'anonymous'
+        
+        user_key = f'saved_workflow_{user_id}'
+        if user_key in st.session_state:
+            del st.session_state[user_key]
+            
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error clearing workflow state: {e}")
+        return False
+
+def check_for_saved_workflow():
+    """Check if user has a saved workflow and offer to resume"""
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return False
+            
+        user_id = current_user.get('username', 'anonymous')
+        saved_state = st.session_state.get(f'saved_workflow_{user_id}')
+        
+        if saved_state:
+            saved_time = saved_state.get('timestamp')
+            if saved_time:
+                try:
+                    saved_datetime = datetime.fromisoformat(saved_time)
+                    time_diff = datetime.now() - saved_datetime
+                    
+                    # Only offer to resume if saved within last 24 hours
+                    if time_diff.total_seconds() < 86400:  # 24 hours
+                        with st.container(border=True):
+                            st.info("📋 **Resume Previous Session**")
+                            st.write(f"Found saved progress from {saved_datetime.strftime('%B %d, %Y at %I:%M %p')}")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if st.button("📂 Resume Where I Left Off", type="primary", use_container_width=True):
+                                    if load_workflow_state():
+                                        st.success("Previous session restored!")
+                                        st.rerun()
+                                    else:
+                                        st.error("Could not restore previous session")
+                            
+                            with col2:
+                                if st.button("🆕 Start Fresh", use_container_width=True):
+                                    clear_workflow_state()
+                                    st.success("Starting fresh session!")
+                                    st.rerun()
+                            
+                            return True
+                except ValueError:
+                    clear_workflow_state()
+        
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error checking for saved workflow: {e}")
+        return False
 
 # Page configuration
 st.set_page_config(
@@ -217,7 +366,7 @@ def login_page():
                                 if success:
                                     user = get_current_user()
                                     st.success(f"✅ Welcome {user['username']}! Logged in as {role}")
-                                    log_activity("login", {"username": user['username'], "role": role})
+                                    # Activity logging removed - function not defined
                                     time.sleep(1)  # Brief pause for success message
                                     st.rerun()
                                 else:
@@ -330,6 +479,9 @@ def user_workflow():
         st.session_state.uploaded_file = None
         st.session_state.validated_data = None
         st.session_state.selected_template = None
+        st.session_state.file_upload_state = 'ready'
+        st.session_state.upload_key = 0
+        st.session_state.show_uploader = False
         st.session_state.generated_files = []
     
     # Get current user
@@ -338,11 +490,17 @@ def user_workflow():
     # Enhanced header
     col1, col2 = st.columns([5, 1])
     with col1:
+        # Enhanced header with mode indication
         create_header(
-            "Certificate Generator",
-            "Follow the steps below to generate your certificates",
+            "Enhanced Guided Certificate Generator", 
+            "Generate professional certificates with step-by-step guidance and save/resume functionality",
             user
         )
+        
+        # Show workflow resume option if not already shown
+        workflow_resumed = st.session_state.get('workflow_resumed', False)
+        if not workflow_resumed and st.session_state.get('workflow_step', 1) == 1:
+            check_for_saved_workflow()
     with col2:
         if st.button("🚪 Logout", use_container_width=True):
             logout()
@@ -365,13 +523,37 @@ def user_workflow():
 
 
 def step1_upload():
-    """Step 1: File Upload with enhanced UI"""
+    """Step 1: File Upload with Enhanced Guided Mode"""
     from utils.ui_components import create_card, COLORS
     
-    # Step header using native components
+    # Enhanced guided mode header with contextual help
     with st.container(border=True):
-        st.subheader("Step 1: Upload Your Data")
-        st.markdown("Upload a spreadsheet containing participant names")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.subheader("📁 Upload Your Student List")
+            st.markdown("Upload a file with your student names to create certificates")
+        with col2:
+            if st.button("❓ Need Help?", type="secondary"):
+                st.session_state.show_step1_help = not st.session_state.get('show_step1_help', False)
+    
+    # Contextual help section
+    if st.session_state.get('show_step1_help', False):
+        with st.expander("💡 How to Upload Your File", expanded=True):
+            st.markdown("""
+            **What files work?**
+            - Excel files (.xlsx, .xls)
+            - CSV files (.csv)
+            
+            **What should be in your file?**
+            - Column with first names
+            - Column with last names
+            - Any other student information
+            
+            **Tips:**
+            - Make sure names are spelled correctly
+            - Remove empty rows at the bottom
+            - First row should have column headers
+            """)
     
     # Enhanced upload zone using native components
     with st.container(border=True):
@@ -382,39 +564,119 @@ def step1_upload():
             st.markdown("or click to browse")
             st.info("**Supported:** CSV, Excel (.xlsx, .xls)")
     
-    uploaded_file = st.file_uploader(
-        "Choose a file",
-        type=['csv', 'xlsx', 'xls'],
-        label_visibility="collapsed"
-    )
+    # Initialize file upload state if not exists
+    if 'file_upload_state' not in st.session_state:
+        st.session_state.file_upload_state = 'ready'
+    if 'show_uploader' not in st.session_state:
+        st.session_state.show_uploader = False
     
-    if uploaded_file:
-        st.session_state.uploaded_file = uploaded_file
-        st.success(f"✓ File uploaded: {uploaded_file.name}")
+    # Check if we already have an uploaded file
+    if 'uploaded_file' in st.session_state and st.session_state.uploaded_file is not None:
+        # Show uploaded file status and continue button
+        st.success(f"✅ File uploaded: {st.session_state.uploaded_file.name}")
         
-        col1, col2, col3 = st.columns([2, 1, 2])
+        # Navigation buttons with save functionality
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col1:
+            if st.button("💾 Save Progress", use_container_width=True):
+                save_workflow_state()
+                st.success("Progress saved!")
         with col2:
-            if st.button("Continue", type="primary", use_container_width=True):
+            st.button("← Back", disabled=True, use_container_width=True)
+        with col3:
+            if st.button("Next →", type="primary", use_container_width=True):
                 st.session_state.workflow_step = 2
+                save_workflow_state()  # Auto-save on navigation
+                st.rerun()
+        
+        # Option to upload different file
+        st.markdown("---")
+        if st.button("📁 Upload Different File"):
+            st.session_state.uploaded_file = None
+            st.session_state.file_upload_state = 'ready'
+            st.session_state.show_uploader = False
+            st.rerun()
+    else:
+        # Show button to reveal file uploader
+        if not st.session_state.show_uploader:
+            col1, col2, col3 = st.columns([2, 1, 2])
+            with col2:
+                if st.button("📁 Choose File to Upload", type="primary", use_container_width=True):
+                    st.session_state.show_uploader = True
+                    st.rerun()
+        else:
+            # Show the actual file uploader
+            st.info("📎 Click 'Browse files' below to select your CSV/Excel file")
+            uploaded_file = st.file_uploader(
+                "Choose a file",
+                type=['csv', 'xlsx', 'xls'],
+                label_visibility="collapsed",
+                key=f"main_file_uploader_{st.session_state.get('upload_key', 0)}"
+            )
+            
+            # Cancel button to hide uploader
+            if st.button("Cancel"):
+                st.session_state.show_uploader = False
+                st.rerun()
+            
+            if uploaded_file:
+                st.session_state.uploaded_file = uploaded_file
+                st.session_state.file_upload_state = 'uploaded'
+                st.session_state.show_uploader = False
+                # Increment key to force re-render without modal
+                st.session_state.upload_key = st.session_state.get('upload_key', 0) + 1
                 st.rerun()
 
 
 def step2_validate():
-    """Step 2: Data Validation with enhanced feedback"""
+    """Step 2: Data Validation with Enhanced Guided Mode"""
     from utils.ui_components import create_card, create_loading_animation, COLORS
     
-    # Use native Streamlit components instead of HTML
+    # Enhanced guided mode header with contextual help
     with st.container(border=True):
-        st.header("Step 2: Validate Your Data")
-        st.caption("Checking your file for required information")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.header("✅ Check Your Data")
+            st.caption("We're making sure your file has everything needed")
+        with col2:
+            if st.button("❓ What's Being Checked?", type="secondary"):
+                st.session_state.show_step2_help = not st.session_state.get('show_step2_help', False)
+    
+    # Contextual help section
+    if st.session_state.get('show_step2_help', False):
+        with st.expander("🔍 What We're Looking For", expanded=True):
+            st.markdown("""
+            **Required Information:**
+            - Student first names
+            - Student last names
+            - Clean, readable data
+            
+            **Common Issues We Fix:**
+            - Extra spaces around names
+            - Empty rows
+            - Mixed up column names
+            - Special characters that might cause problems
+            
+            **Don't Worry!**
+            - We'll show you exactly what we find
+            - You can fix any issues and try again
+            - Your original file is never changed
+            """)
     
     if not st.session_state.uploaded_file:
         st.error("📁 **No file uploaded**: Please go back to Step 1 to upload your data file.")
-        col1, col2, col3 = st.columns([2, 1, 2])
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col1:
+            if st.button("💾 Save Progress", use_container_width=True):
+                save_workflow_state()
+                st.success("Progress saved!")
         with col2:
             if st.button("← Back to Upload", use_container_width=True):
                 st.session_state.workflow_step = 1
+                save_workflow_state()
                 st.rerun()
+        with col3:
+            st.button("Next →", disabled=True, use_container_width=True)
         return
     
     # Show file information
@@ -481,15 +743,22 @@ def step2_validate():
                 hide_index=True
             )
             
-            # Auto-advance with countdown
-            countdown_placeholder = st.empty()
-            for i in range(3, 0, -1):
-                countdown_placeholder.info(f"🚀 **Auto-advancing to template selection in {i} seconds...** (Click below to continue immediately)")
-                time.sleep(1)
-            countdown_placeholder.empty()
-            
-            st.session_state.workflow_step = 3
-            st.rerun()
+            # Navigation buttons - remove auto-advance
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col1:
+                if st.button("💾 Save Progress", use_container_width=True):
+                    save_workflow_state()
+                    st.success("Progress saved!")
+            with col2:
+                if st.button("← Back to Upload", use_container_width=True):
+                    st.session_state.workflow_step = 1
+                    save_workflow_state()
+                    st.rerun()
+            with col3:
+                if st.button("Next: Choose Template →", type="primary", use_container_width=True):
+                    st.session_state.workflow_step = 3
+                    save_workflow_state()
+                    st.rerun()
         else:
             st.error("❌ **Validation Failed**: Your data file has issues that need to be resolved")
             
@@ -505,13 +774,23 @@ def step2_validate():
             • Remove empty rows at the end of your data
             """)
                 
-            col1, col2 = st.columns(2)
+            # Navigation buttons for error state
+            col1, col2, col3 = st.columns(3)
             with col1:
+                if st.button("← Back to Upload", use_container_width=True):
+                    st.session_state.workflow_step = 1
+                    save_workflow_state()
+                    st.rerun()
+            with col2:
                 if st.button("📁 Try Another File", use_container_width=True):
                     st.session_state.workflow_step = 1
                     st.session_state.uploaded_file = None
+                    st.session_state.file_upload_state = 'ready'
+                    st.session_state.upload_key = st.session_state.get('upload_key', 0) + 1
+                    st.session_state.show_uploader = False
+                    save_workflow_state()
                     st.rerun()
-            with col2:
+            with col3:
                 if st.button("🔄 Retry Validation", use_container_width=True):
                     st.rerun()
                 
@@ -540,6 +819,9 @@ def step2_validate():
             if st.button("📁 Try Different File", use_container_width=True):
                 st.session_state.workflow_step = 1
                 st.session_state.uploaded_file = None
+                st.session_state.file_upload_state = 'ready'
+                st.session_state.upload_key = st.session_state.get('upload_key', 0) + 1
+                st.session_state.show_uploader = False
                 st.rerun()
         with col2:
             if st.button("🔄 Try Again", use_container_width=True):
@@ -588,16 +870,26 @@ def step3_template():
         validation_warnings = []
         
         for template in available_templates:
-            # Validate template accessibility
-            template_path = storage.get_template_path(template['name'])
-            if template_path and os.path.exists(template_path):
+            # For programmatic templates, skip file validation
+            if template['name'] == 'Programmatic Certificate':
                 validated_templates.append({
                     **template,
-                    "path": template_path,
-                    "status": "available"
+                    "path": "programmatic",
+                    "status": "available",
+                    "display_name": "Programmatic Certificate",
+                    "description": "Modern certificate design generated programmatically"
                 })
             else:
-                validation_warnings.append(f"Template '{template['name']}' file not accessible")
+                # Validate template accessibility for PDF templates (if any)
+                template_path = storage.get_template_path(template['name'])
+                if template_path and os.path.exists(template_path):
+                    validated_templates.append({
+                        **template,
+                        "path": template_path,
+                        "status": "available"
+                    })
+                else:
+                    validation_warnings.append(f"Template '{template['name']}' file not accessible")
         
         # Show warnings if any
         if validation_warnings:
@@ -610,48 +902,50 @@ def step3_template():
             st.info("Contact your administrator to fix template issues.")
             return
         
-        # Display templates in improved grid
-        st.subheader("📋 Available Templates")
-        
-        # Create responsive columns based on number of templates
+        # Auto-select if only one template
         if len(validated_templates) == 1:
-            cols = st.columns([1, 2, 1])
-            display_cols = [cols[1]]  # Center single template
-        elif len(validated_templates) == 2:
-            display_cols = st.columns(2)
+            template = validated_templates[0]
+            st.session_state.selected_template = template.get('name', 'template_0')
+            st.session_state.selected_template_info = template
+            st.success(f"✅ **Template Auto-Selected**: {template.get('display_name', template.get('name'))}")
+            # Skip template selection UI entirely
         else:
+            # Display templates in improved grid only if multiple
+            st.subheader("📋 Available Templates")
+            
+            # Create responsive columns based on number of templates
             display_cols = st.columns(min(3, len(validated_templates)))
-        
-        for idx, template in enumerate(validated_templates):
-            with display_cols[idx % len(display_cols)]:
-                # Template card with enhanced information
-                template_name = template.get('display_name', template.get('name', 'Unknown'))
-                template_id = template.get('name', f'template_{idx}')
-                
-                selected = st.session_state.selected_template == template_id
-                
-                # Template selection button
-                button_style = "🟢" if selected else "⚪"
-                button_text = f"{button_style} {template_name}"
-                
-                if st.button(
-                    button_text,
-                    key=f"template_select_{template_id}",
-                    use_container_width=True,
-                    type="primary" if selected else "secondary"
-                ):
-                    st.session_state.selected_template = template_id
-                    st.session_state.selected_template_info = template
-                    st.rerun()
-                
-                # Template details
-                with st.container():
-                    st.caption(template.get('description', 'Certificate template'))
+            
+            for idx, template in enumerate(validated_templates):
+                with display_cols[idx % len(display_cols)]:
+                    # Template card with enhanced information
+                    template_name = template.get('display_name', template.get('name', 'Unknown'))
+                    template_id = template.get('name', f'template_{idx}')
                     
-                    # Show file size and creation date
-                    if template.get('size'):
-                        size_kb = template['size'] / 1024
-                        st.caption(f"📁 Size: {size_kb:.1f} KB")
+                    selected = st.session_state.selected_template == template_id
+                    
+                    # Template selection button
+                    button_style = "🟢" if selected else "⚪"
+                    button_text = f"{button_style} {template_name}"
+                    
+                    if st.button(
+                        button_text,
+                        key=f"template_select_{template_id}",
+                        use_container_width=True,
+                        type="primary" if selected else "secondary"
+                    ):
+                        st.session_state.selected_template = template_id
+                        st.session_state.selected_template_info = template
+                        st.rerun()
+                    
+                    # Template details
+                    with st.container():
+                        st.caption(template.get('description', 'Certificate template'))
+                        
+                        # Show file size and creation date
+                        if template.get('size'):
+                            size_kb = template['size'] / 1024
+                            st.caption(f"📁 Size: {size_kb:.1f} KB")
                     
                     if template.get('created'):
                         try:
@@ -722,10 +1016,10 @@ def step3_template():
                 
                 # Template validation status
                 template_path = selected_info.get('path')
-                if template_path and os.path.exists(template_path):
-                    st.success("🟢 Template file verified and accessible")
+                if template_path == 'programmatic' or (template_path and os.path.exists(template_path)):
+                    st.success("🟢 Template verified and accessible")
                 else:
-                    st.error("🔴 Template file validation failed")
+                    st.error("🔴 Template validation failed")
             
             # Navigation buttons
             col1, col2, col3 = st.columns([2, 1, 2])
@@ -738,10 +1032,23 @@ def step3_template():
                 template_path = selected_info.get('path')
                 has_course = st.session_state.get('selected_course_info') is not None
                 
-                if template_path and os.path.exists(template_path) and has_course:
-                    if st.button("Continue to Generate →", type="primary", use_container_width=True):
-                        st.session_state.workflow_step = 4
-                        st.rerun()
+                if template_path and (template_path == 'programmatic' or os.path.exists(template_path)) and has_course:
+                    # Navigation buttons with save functionality
+                    col1, col2, col3 = st.columns([1, 1, 1])
+                    with col1:
+                        if st.button("💾 Save Progress", use_container_width=True):
+                            save_workflow_state()
+                            st.success("Progress saved!")
+                    with col2:
+                        if st.button("← Back to Data Check", use_container_width=True):
+                            st.session_state.workflow_step = 2
+                            save_workflow_state()
+                            st.rerun()
+                    with col3:
+                        if st.button("Next: Create Certificates →", type="primary", use_container_width=True):
+                            st.session_state.workflow_step = 4
+                            save_workflow_state()
+                            st.rerun()
                 else:
                     if not has_course:
                         st.error("Please select a course")
@@ -783,13 +1090,39 @@ def step3_template():
 
 
 def step4_generate():
-    """Step 4: Generate Certificates with enhanced UI"""
+    """Step 4: Generate Certificates with Enhanced Guided Mode"""
     from utils.ui_components import create_card, COLORS
     
-    # Use native Streamlit components instead of HTML
+    # Enhanced guided mode header with contextual help
     with st.container(border=True):
-        st.header("Step 4: Generate Certificates")
-        st.caption("Ready to create your certificates")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.header("🏆 Create Your Certificates")
+            st.caption("Ready to generate certificates for your students")
+        with col2:
+            if st.button("❓ What Happens Next?", type="secondary"):
+                st.session_state.show_step4_help = not st.session_state.get('show_step4_help', False)
+    
+    # Contextual help section
+    if st.session_state.get('show_step4_help', False):
+        with st.expander("⚙️ How Certificate Creation Works", expanded=True):
+            st.markdown("""
+            **What we'll do:**
+            - Create one certificate for each student
+            - Use the template style you picked
+            - Add each student's name automatically
+            - Package everything in a zip file
+            
+            **This might take a moment:**
+            - We'll show progress as we work
+            - You can't stop the process once started
+            - All certificates will be ready to download
+            
+            **What you get:**
+            - Professional PDF certificates
+            - One file for each student
+            - Everything packaged for easy download
+            """)
     
     if not st.session_state.validated_data.empty and st.session_state.selected_template:
         # Get template info for display
@@ -807,43 +1140,27 @@ def step4_generate():
         - Course: {course_name}
         """)
         
-        col1, col2, col3 = st.columns([2, 1, 2])
+        # Navigation buttons with save functionality
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col1:
+            if st.button("💾 Save Progress", use_container_width=True):
+                save_workflow_state()
+                st.success("Progress saved!")
         with col2:
-            if st.button("Generate Certificates", type="primary", use_container_width=True):
+            if st.button("← Back to Templates", use_container_width=True):
+                st.session_state.workflow_step = 3
+                save_workflow_state()
+                st.rerun()
+        with col3:
+            if st.button("🏆 Create Certificates", type="primary", use_container_width=True):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 
                 generated_files = []
                 total = len(st.session_state.validated_data)
                 
-                # Use programmatic certificate generator
-                try:
-                    # Check if using programmatic certificate
-                    if st.session_state.selected_template == "Programmatic Certificate":
-                        # Use programmatic generation - no template file needed
-                        from certificate_generator_production import generate_certificate_for_app
-                        use_programmatic = True
-                    else:
-                        # Legacy PDF template support
-                        template_path = storage.get_template_path(st.session_state.selected_template)
-                        if not template_path:
-                            st.error("Template file not found. Please select a different template.")
-                            return
-                        generator = PDFGenerator(template_path)
-                        use_programmatic = False
-                    
-                    # Validate template (skip for programmatic)
-                    if not use_programmatic:
-                        validation_info = generator.validate_template()
-                        if not validation_info['valid']:
-                            st.error("Template validation failed:")
-                            for error in validation_info['errors']:
-                                st.error(f"• {error}")
-                            return
-                        
-                except Exception as e:
-                    st.error(f"Error loading template: {str(e)}")
-                    return
+                # Use programmatic certificate generator only
+                from certificate_generator_production import generate_certificate_for_app
                 
                 # Create temp directory if it doesn't exist
                 temp_dir = Path("temp")
@@ -876,27 +1193,17 @@ def step4_generate():
                         course_name = course_info.get('name', 'Vapes and Vaping')
                         course_id = course_info.get('id')
                         
-                        # Generate the certificate
-                        if use_programmatic:
-                            # Use programmatic generation
-                            pdf_bytes = generate_certificate_for_app(
-                                student_name=f"{first_name} {last_name}".strip(),
-                                course_name=course_name,
-                                score="Pass",
-                                completion_date=datetime.now().strftime("%B %d, %Y")
-                            )
-                            # Save to file
-                            with open(output_path, 'wb') as f:
-                                f.write(pdf_bytes)
-                            pdf_path = output_path
-                        else:
-                            # Use PDF template
-                            pdf_path = generator.generate_certificate(
-                                first_name=str(first_name).strip(),
-                                last_name=str(last_name).strip(),
-                                output_path=output_path,
-                                additional_fields={'course': course_name}
-                            )
+                        # Generate the certificate using programmatic generation
+                        pdf_bytes = generate_certificate_for_app(
+                            student_name=f"{first_name} {last_name}".strip(),
+                            course_name=course_name,
+                            score="Pass",
+                            completion_date=datetime.now().strftime("%B %d, %Y")
+                        )
+                        # Save to file
+                        with open(output_path, 'wb') as f:
+                            f.write(pdf_bytes)
+                        pdf_path = output_path
                         generated_files.append(pdf_path)
                         
                         # Log certificate generation
@@ -926,22 +1233,50 @@ def step4_generate():
                 st.rerun()
     else:
         st.error("Missing data or template selection")
-        if st.button("Go Back"):
-            st.session_state.workflow_step = 3
-            st.rerun()
+        # Navigation buttons for error state
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col1:
+            if st.button("💾 Save Progress", use_container_width=True):
+                save_workflow_state()
+                st.success("Progress saved!")
+        with col2:
+            if st.button("← Back to Templates", use_container_width=True):
+                st.session_state.workflow_step = 3
+                save_workflow_state()
+                st.rerun()
+        with col3:
+            st.button("Create Certificates →", disabled=True, use_container_width=True)
 
 
 def step5_complete():
-    """Step 5: Download Complete with enhanced celebration"""
+    """Step 5: Download Complete with Enhanced Guided Mode"""
     from utils.ui_components import COLORS
     
-    # Use native Streamlit components instead of HTML
+    # Enhanced guided mode header with celebration
     with st.container(border=True):
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.markdown("# 🎉")
-            st.title("Certificates Generated Successfully!")
-            st.caption("All certificates have been generated and are ready for download.")
+            st.title("All Done!")
+            st.caption("Your certificates are ready to download")
+    
+    # Contextual help section
+    with st.expander("💾 What's in Your Download?", expanded=False):
+        st.markdown("""
+        **Your certificate package includes:**
+        - One PDF certificate for each student
+        - Professional quality, ready to print
+        - All files in one convenient zip folder
+        
+        **What to do next:**
+        - Click the download button below
+        - Unzip the folder on your computer
+        - Print or email individual certificates
+        
+        **Need to make more?**
+        - Use the "Create More Certificates" button
+        - You can upload a new file anytime
+        """)
     
     if st.session_state.generated_files:
         # Create zip file
@@ -963,17 +1298,32 @@ def step5_complete():
                     data=f,
                     file_name=f"certificates_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
                     mime="application/zip",
-                    use_container_width=True
+                    use_container_width=True,
+                    help="Click to download a zip file containing all your certificates"
                 )
             
-            if st.button("Generate More Certificates", use_container_width=True):
-                # Reset workflow
-                st.session_state.workflow_step = 1
-                st.session_state.uploaded_file = None
-                st.session_state.validated_data = None
-                st.session_state.selected_template = None
-                st.session_state.generated_files = []
-                st.rerun()
+            st.info(f"✅ Ready: {len(st.session_state.generated_files)} certificates in your download")
+            
+            # Navigation buttons for completion
+            col_start, col_save = st.columns(2)
+            with col_start:
+                if st.button("🎆 Create More Certificates", use_container_width=True):
+                    # Clear workflow state
+                    clear_workflow_state()
+                    # Reset workflow
+                    st.session_state.workflow_step = 1
+                    st.session_state.uploaded_file = None
+                    st.session_state.validated_data = None
+                    st.session_state.selected_template = None
+                    st.session_state.file_upload_state = 'ready'
+                    st.session_state.upload_key = st.session_state.get('upload_key', 0) + 1
+                    st.session_state.show_uploader = False
+                    st.session_state.generated_files = []
+                    st.rerun()
+            with col_save:
+                if st.button("💾 Save This Session", use_container_width=True):
+                    save_workflow_state()
+                    st.success("Session saved!")
 
 
 def logout_action():
@@ -1003,7 +1353,8 @@ def render_dashboard():
         with st.container(border=True):
             st.metric(
                 label="Total Certificates",
-                value="1,234"
+                value="0",
+                help="No certificates generated yet"
             )
     
     with col2:
@@ -1019,14 +1370,16 @@ def render_dashboard():
         with st.container(border=True):
             st.metric(
                 label="Templates",
-                value="4"
+                value="1",
+                help="Programmatic Certificate"
             )
     
     with col4:
         with st.container(border=True):
             st.metric(
                 label="This Month",
-                value="89"
+                value="0",
+                help="No certificates this month"
             )
     
     # Action cards
@@ -1064,15 +1417,7 @@ def render_dashboard():
     # Recent activity
     st.subheader("Recent Activity")
     with st.container(border=True):
-        activities = [
-            ("User generated 25 certificates", "2 hours ago"),
-            ("New template uploaded: Summer Workshop", "5 hours ago"),
-            ("Admin updated system settings", "1 day ago"),
-            ("Batch generation completed: 150 certificates", "2 days ago")
-        ]
-        
-        for activity, time in activities:
-            st.markdown(f"• {activity} - *{time}*")
+        st.info("📋 No recent activity - start generating certificates to see activity here!")
 
 
 def render_templates_page():
@@ -1088,158 +1433,17 @@ def render_templates_page():
         get_current_user()
     )
     
-    # Quick actions bar
-    col1, col2, col3 = st.columns([2, 1, 1])
+    # Quick actions bar - simplified for programmatic only
+    col1, col2 = st.columns([3, 1])
     with col1:
-        search_query = st.text_input(
-            "Search templates",
-            placeholder="🔍 Search by name or description...",
-            label_visibility="collapsed"
-        )
+        st.info("🎨 SafeSteps now uses programmatic certificate generation only")
     with col2:
-        if st.button("📤 Upload Template", type="primary", use_container_width=True):
-            st.session_state.show_upload_form = True
-    with col3:
-        if st.button("🔍 Validate PDF", use_container_width=True):
-            st.session_state.show_validate_form = True
+        if st.button("🔄 Refresh", use_container_width=True):
+            st.rerun()
     
-    # Upload new template modal
-    if st.session_state.get('show_upload_form', False):
-        # Use native container instead of HTML
-        with st.container(border=True):
-            st.subheader("📤 Upload New Template")
-            st.caption("Add a new certificate template to your library")
-        with st.form("upload_template_form"):
-            uploaded_template = st.file_uploader(
-                "Choose a PDF template",
-                type=['pdf'],
-                help="Select a PDF file with form fields for FirstName and LastName"
-            )
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                template_name = st.text_input(
-                    "Template Name",
-                    placeholder="e.g., Professional Certificate",
-                    help="A friendly name for this template"
-                )
-            with col2:
-                template_filename = st.text_input(
-                    "Filename (optional)",
-                    placeholder="e.g., professional_cert",
-                    help="Leave blank to auto-generate from template name"
-                )
-            
-            template_description = st.text_area(
-                "Template Description",
-                placeholder="Describe when to use this template...",
-                help="Optional description to help users choose the right template"
-            )
-            
-            col_submit, col_cancel = st.columns(2)
-            with col_submit:
-                submit_button = st.form_submit_button("💾 Save Template", type="primary", use_container_width=True)
-            with col_cancel:
-                cancel_button = st.form_submit_button("Cancel", use_container_width=True)
-            
-            if cancel_button:
-                st.session_state.show_upload_form = False
-                st.rerun()
-            
-            if submit_button and uploaded_template:
-                if not template_name:
-                    st.error("Please provide a template name")
-                else:
-                    try:
-                        # Generate filename if not provided
-                        if not template_filename:
-                            template_filename = template_name.lower().replace(" ", "_")
-                        
-                        # Ensure filename ends with .pdf
-                        if not template_filename.endswith('.pdf'):
-                            template_filename += '.pdf'
-                        
-                        # Prepare metadata
-                        metadata = {
-                            'display_name': template_name,
-                            'description': template_description,
-                            'uploaded_by': get_current_user()['username'],
-                            'uploaded_at': datetime.now().isoformat()
-                        }
-                        
-                        # Save template using storage manager
-                        with st.spinner("Uploading template..."):
-                            if storage.save_template(uploaded_template, template_filename, metadata):
-                                st.success(f"✅ Template '{template_name}' uploaded successfully!")
-                                st.session_state.show_upload_form = False
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                st.error("Failed to save template. Please try again.")
-                            
-                    except Exception as e:
-                        st.error(f"Error uploading template: {str(e)}")
-                        logger.error(f"Template upload error: {e}")
+    # Upload feature removed - programmatic generation only
     
-            pass  # Container automatically closes
-    
-    # Template validation modal
-    if st.session_state.get('show_validate_form', False):
-        # Use native container instead of HTML
-        with st.container(border=True):
-            st.subheader("🔍 Validate PDF Template")
-        st.info("Upload a PDF to check if it has the required form fields")
-        test_template = st.file_uploader(
-            "Choose a PDF to validate",
-            type=['pdf'],
-            key="validate_template"
-        )
-        
-        if test_template:
-            try:
-                # Save temporarily to validate
-                with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
-                    tmp.write(test_template.read())
-                    tmp_path = tmp.name
-                
-                # Validate using PDF generator
-                generator = PDFGenerator(tmp_path)
-                validation_info = generator.validate_template()
-                
-                # Clean up temp file
-                os.unlink(tmp_path)
-                
-                # Show validation results
-                if validation_info['valid']:
-                    st.success("✅ Template is valid!")
-                else:
-                    st.error("❌ Template validation failed")
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Form Fields Found", len(validation_info['fields_found']))
-                    if validation_info['fields_found']:
-                        st.write("**Detected fields:**")
-                        for field in validation_info['fields_found']:
-                            st.write(f"• {field}")
-                
-                with col2:
-                    st.metric("Page Count", validation_info['page_count'])
-                    st.metric("File Size", f"{validation_info['file_size'] / 1024:.1f} KB")
-                
-                if validation_info['errors']:
-                    st.error("**Errors:**")
-                    for error in validation_info['errors']:
-                        st.error(f"• {error}")
-                        
-            except Exception as e:
-                st.error(f"Error validating template: {str(e)}")
-            
-            if st.button("Close", use_container_width=True):
-                st.session_state.show_validate_form = False
-                st.rerun()
-            
-            pass  # Container automatically closes
+    # Template validation feature removed - programmatic generation only
     
     # Existing templates section
     # Use native header instead of HTML
@@ -1249,22 +1453,10 @@ def render_templates_page():
         # Get templates - Use programmatic certificate
         templates = [{"name": "Programmatic Certificate", "filename": "programmatic", "path": "programmatic", "created": "2025-07-30", "size": 0}]
         
-        # Filter templates based on search
-        if search_query:
-            templates = [
-                t for t in templates 
-                if search_query.lower() in t.get('display_name', t.get('name', '')).lower() 
-                or search_query.lower() in t.get('description', '').lower()
-            ]
+        # No search filtering needed for single programmatic template
         
         if not templates:
-            create_empty_state(
-                "📄",
-                "No templates found" if search_query else "No templates uploaded yet",
-                "Upload your first certificate template to get started" if not search_query else "Try a different search term",
-                "Upload Template" if not search_query else None,
-                lambda: st.session_state.update({'show_upload_form': True}) if not search_query else None
-            )
+            st.info("🎨 SafeSteps uses programmatic certificate generation - no templates needed!")
         else:
             # Template grid view
             cols_per_row = 3
@@ -1302,41 +1494,11 @@ def render_templates_page():
                                 key=f"preview_{template['name']}",
                                 use_container_width=True
                             ):
-                                try:
-                                    template_path = storage.get_template_path(template['name'])
-                                    if template_path:
-                                        generator = PDFGenerator(template_path)
-                                        preview_bytes = generator.generate_preview("John", "Doe")
-                                        
-                                        st.download_button(
-                                            label="📥 Download Preview",
-                                            data=preview_bytes,
-                                            file_name=f"preview_{template['name']}",
-                                            mime="application/pdf",
-                                            key=f"download_preview_{template['name']}",
-                                            use_container_width=True
-                                        )
-                                    else:
-                                        st.error("Template file not found")
-                                except Exception as e:
-                                    st.error(f"Error: {str(e)}")
+                                # PDF template preview removed - programmatic generation only
+                                st.info("Preview not available - using programmatic generation")
                         
                         with col_delete:
-                            if st.button(
-                                "🗑️ Delete",
-                                key=f"delete_{template['name']}",
-                                use_container_width=True,
-                                type="secondary"
-                            ):
-                                if st.session_state.get(f"confirm_delete_{template['name']}"):
-                                    if storage.delete_template(template['name']):
-                                        st.success(f"Template '{display_name}' deleted")
-                                        st.rerun()
-                                    else:
-                                        st.error("Failed to delete template")
-                                else:
-                                    st.session_state[f"confirm_delete_{template['name']}"] = True
-                                    st.warning("Click again to confirm deletion")
+                            st.caption("🔒 Protected")  # Programmatic template cannot be deleted
             
             # Summary stats
             st.divider()  # Use native divider instead of HTML
@@ -1373,24 +1535,8 @@ def render_templates_page():
                     with col4:
                         # Action buttons in a vertical layout
                         if st.button("👁️ Preview", key=f"preview_{template['name']}"):
-                            try:
-                                # Generate preview using the template
-                                template_path = storage.get_template_path(template['name'])
-                                if template_path:
-                                    generator = PDFGenerator(template_path)
-                                    preview_bytes = generator.generate_preview("John", "Doe")
-                                    
-                                    st.download_button(
-                                        label="📥 Download Preview",
-                                        data=preview_bytes,
-                                        file_name=f"preview_{template['name']}",
-                                        mime="application/pdf",
-                                        key=f"download_preview_{template['name']}"
-                                    )
-                                else:
-                                    st.error("Template file not found")
-                            except Exception as e:
-                                st.error(f"Error generating preview: {str(e)}")
+                            # PDF template preview removed - programmatic generation only
+                            st.info("Preview not available - using programmatic generation")
                         
                         if st.button("🗑️ Delete", key=f"delete_{template['name']}"):
                             if storage.delete_template(template['name']):
@@ -1508,11 +1654,7 @@ def render_courses_page():
                         
                         if new_course:
                             st.success(f"Course '{course_name}' created successfully!")
-                            log_activity(
-                                get_current_user()['username'],
-                                "create_course",
-                                {"course_name": course_name}
-                            )
+                            # Activity logging removed - function not defined
                             st.session_state.show_add_course_form = False
                             st.rerun()
                         else:
@@ -1631,11 +1773,7 @@ def render_courses_page():
                             
                             if updated_course:
                                 st.success(f"Course '{course_name}' updated successfully!")
-                                log_activity(
-                                    get_current_user()['username'],
-                                    "update_course",
-                                    {"course_id": course_id, "course_name": course_name}
-                                )
+                                # Activity logging removed - function not defined
                                 st.session_state.show_edit_course_form = False
                                 st.session_state.edit_course_id = None
                                 st.rerun()
@@ -1660,11 +1798,7 @@ def render_courses_page():
                     if st.button("🗑️ Delete", type="primary", use_container_width=True):
                         if course_manager.delete_course(course_id):
                             st.success(f"Course '{course['name']}' deleted successfully!")
-                            log_activity(
-                                get_current_user()['username'],
-                                "delete_course",
-                                {"course_id": course_id, "course_name": course['name']}
-                            )
+                            # Activity logging removed - function not defined
                             st.session_state.show_delete_confirm = False
                             st.session_state.delete_course_id = None
                             st.rerun()
@@ -1880,6 +2014,8 @@ def render_admin_certificate_generation():
         st.session_state.admin_validated_data = None
         st.session_state.admin_selected_template = None
         st.session_state.admin_generated_files = []
+        st.session_state.admin_show_uploader = False
+        st.session_state.admin_upload_key = 0
     
     # Get current user
     user = get_current_user()
@@ -1937,27 +2073,61 @@ def admin_step1_upload():
     
     # Use native components instead of HTML
     with st.container(border=True):
-        st.subheader("📤 Upload Your Spreadsheet")
-        st.caption("Supported formats: CSV, Excel (.xlsx, .xls)")
-        st.caption("Your file should contain participant names and any additional certificate data.")
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("# 📁")
+            st.markdown("### Drop your file here")
+            st.markdown("or click to browse")
+            st.info("**Supported:** CSV, Excel (.xlsx, .xls)")
     
-    uploaded_file = st.file_uploader(
-        "Choose a file",
-        type=['csv', 'xlsx', 'xls'],
-        help="Upload a CSV or Excel file with participant data",
-        key="admin_file_upload"
-    )
+    # Initialize admin upload state
+    if 'admin_show_uploader' not in st.session_state:
+        st.session_state.admin_show_uploader = False
     
-    if uploaded_file is not None:
-        st.session_state.admin_uploaded_file = uploaded_file
-        st.success(f"✅ File uploaded: {uploaded_file.name}")
-        
-        # Show file info
-        st.info(f"📊 File size: {uploaded_file.size:,} bytes")
+    # Check if we already have an uploaded file
+    if 'admin_uploaded_file' in st.session_state and st.session_state.admin_uploaded_file is not None:
+        # Show uploaded file status and continue button
+        st.success(f"✅ File uploaded: {st.session_state.admin_uploaded_file.name}")
+        st.info(f"📊 File size: {st.session_state.admin_uploaded_file.size:,} bytes")
         
         if st.button("Continue to Validation", type="primary", use_container_width=True):
             st.session_state.admin_workflow_step = 2
             st.rerun()
+        
+        # Option to upload different file
+        st.markdown("---")
+        if st.button("📁 Upload Different File"):
+            st.session_state.admin_uploaded_file = None
+            st.session_state.admin_show_uploader = False
+            st.rerun()
+    else:
+        # Show button to reveal file uploader
+        if not st.session_state.admin_show_uploader:
+            col1, col2, col3 = st.columns([2, 1, 2])
+            with col2:
+                if st.button("📁 Choose File to Upload", type="primary", use_container_width=True):
+                    st.session_state.admin_show_uploader = True
+                    st.rerun()
+        else:
+            # Show the actual file uploader
+            st.info("📎 Click 'Browse files' below to select your CSV/Excel file")
+            uploaded_file = st.file_uploader(
+                "Choose a file",
+                type=['csv', 'xlsx', 'xls'],
+                help="Upload a CSV or Excel file with participant data",
+                key=f"admin_file_upload_{st.session_state.get('admin_upload_key', 0)}"
+            )
+            
+            # Cancel button to hide uploader
+            if st.button("Cancel"):
+                st.session_state.admin_show_uploader = False
+                st.rerun()
+            
+            if uploaded_file is not None:
+                st.session_state.admin_uploaded_file = uploaded_file
+                st.session_state.admin_show_uploader = False
+                st.session_state.admin_upload_key = st.session_state.get('admin_upload_key', 0) + 1
+                st.rerun()
 
 
 def admin_step2_validate():
@@ -2030,74 +2200,69 @@ def admin_step3_template():
         # Container automatically closes
         return
     
-    # Template selection - Use programmatic certificate
-    # We no longer need PDF templates since we use programmatic generation
-    templates = [{"name": "Programmatic Certificate", "filename": "programmatic", "path": "programmatic"}]
+    # Template auto-selected - Use programmatic certificate
+    # Since we only have one template, auto-select it
+    template = {
+        "name": "Programmatic Certificate", 
+        "filename": "programmatic", 
+        "path": "programmatic", 
+        "display_name": "Programmatic Certificate"
+    }
+    st.session_state.admin_selected_template = template
     
-    # Always have at least one template available
-    if not templates:
-        st.warning("⚠️ No templates available. Please contact administrator to upload templates.")
-    else:
-        st.subheader("🎨 Available Templates")
+    # Show template status
+    st.subheader("📋 Template Ready")
+    st.success("✅ **Template Selected**: Programmatic Certificate")
+    st.info("📋 Modern certificate design generated programmatically with your organization branding.")
+    
+    # Show template info card
+    with st.container(border=True):
+        col1, col2 = st.columns([1, 9])
+        with col1:
+            st.markdown("📄")
+        with col2:
+            st.markdown("**Programmatic Certificate**")
+            st.caption("Modern, professional certificate design")
+            st.caption("✅ Ready to use")
+            
+    # Course Selection
+    st.subheader("📚 Course Selection")
+    
+    # Get available courses
+    courses = storage.list_course_templates()
+    
+    if courses:
+        # Create course options for selectbox
+        course_options = {f"{course['name']}": course for course in courses}
         
-        template_options = {}
-        for template in templates:
-            # Use display_name if available, otherwise fallback to name
-            display_name = template.get('display_name', template.get('name', 'Unknown Template'))
-            template_options[display_name] = template
-        
-        selected_template_name = st.selectbox(
-            "Choose a certificate template:",
-            options=list(template_options.keys()),
-            help="Select the template design for your certificates"
+        # Course selection
+        selected_course_name = st.selectbox(
+            "Select a course:",
+            options=list(course_options.keys()),
+            key="admin_selected_course",
+            help="Choose the course that participants completed"
         )
         
-        if selected_template_name:
-            selected_template = template_options[selected_template_name]
-            st.session_state.admin_selected_template = selected_template
+        if selected_course_name:
+            selected_course = course_options[selected_course_name]
+            st.session_state.admin_selected_course_info = selected_course
             
-            # Show template preview if available
-            if 'preview' in selected_template:
-                st.image(selected_template['preview'], caption=f"Preview: {selected_template_name}")
-            
-            # Course Selection
-            st.subheader("📚 Course Selection")
-            
-            # Get available courses
-            courses = storage.list_course_templates()
-            
-            if courses:
-                # Create course options for selectbox
-                course_options = {f"{course['name']}": course for course in courses}
-                
-                # Course selection
-                selected_course_name = st.selectbox(
-                    "Select a course:",
-                    options=list(course_options.keys()),
-                    key="admin_selected_course",
-                    help="Choose the course that participants completed"
-                )
-                
-                if selected_course_name:
-                    selected_course = course_options[selected_course_name]
-                    st.session_state.admin_selected_course_info = selected_course
-                    
-                    # Show course details
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        if selected_course.get('description'):
-                            st.info(f"📝 **Description**: {selected_course['description']}")
-                    with col2:
-                        if selected_course.get('usage_count', 0) > 0:
-                            st.metric("Usage Count", selected_course['usage_count'])
-            else:
-                st.warning("No courses available. Using default course.")
-                # Provide default course for backward compatibility
-                st.session_state.admin_selected_course_info = {
-                    'name': 'Vapes and Vaping',
-                    'id': 'default_course',
-                    'description': 'Default course'
-                }
+            # Show course details
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                if selected_course.get('description'):
+                    st.info(f"📝 **Description**: {selected_course['description']}")
+            with col2:
+                if selected_course.get('usage_count', 0) > 0:
+                    st.metric("Usage Count", selected_course['usage_count'])
+        else:
+            st.warning("No courses available. Using default course.")
+            # Provide default course for backward compatibility
+            st.session_state.admin_selected_course_info = {
+                'name': 'Vapes and Vaping',
+                'id': 'default_course',
+                'description': 'Default course'
+            }
             
             # Navigation buttons
             col1, col2 = st.columns(2)
@@ -2171,28 +2336,8 @@ def admin_step4_generate():
                     st.error("Template name not found. Please select a valid template.")
                     return
                 
-                # Check if using programmatic certificate
-                if template_name == "Programmatic Certificate":
-                    # Use programmatic generation
-                    from certificate_generator_production import generate_certificate_for_app
-                    use_programmatic = True
-                else:
-                    # Legacy PDF template
-                    template_path = storage.get_template_path(template_name)
-                    if not template_path:
-                        st.error("Template file not found. The template may have been deleted.")
-                        return
-                    pdf_generator = PDFGenerator(template_path)
-                    use_programmatic = False
-                
-                # Validate template (skip for programmatic)
-                if not use_programmatic:
-                    validation_info = pdf_generator.validate_template()
-                    if not validation_info['valid']:
-                        st.error("Template validation failed:")
-                        for error in validation_info['errors']:
-                            st.error(f"• {error}")
-                        return
+                # Use programmatic generation only
+                from certificate_generator_production import generate_certificate_for_app
                 
                 # Prepare recipients data
                 recipients = []
@@ -2211,70 +2356,38 @@ def admin_step4_generate():
                     st.error("No valid recipients found in the data.")
                     return
                 
-                # Generate certificates with progress callback
-                def update_progress(current, total, message):
-                    progress = current / total if total > 0 else 0
-                    progress_bar.progress(progress)
-                    status_text.text(message)
+                # Generate certificates using simple iteration (matching user workflow)
+                generated_files = []
+                total = len(recipients)
                 
-                if use_programmatic:
-                    # Use programmatic generation for batch
-                    results = []
-                    generated_files = []
-                    
-                    for i, recipient in enumerate(recipients):
-                        try:
-                            update_progress(i, len(recipients), f"Generating certificate for {recipient['first_name']} {recipient['last_name']}")
-                            
-                            # Get course info
-                            course_info = st.session_state.get('admin_selected_course_info', {})
-                            course_name = course_info.get('name', 'Vapes and Vaping')
-                            
-                            # Generate certificate
-                            pdf_bytes = generate_certificate_for_app(
-                                student_name=f"{recipient['first_name']} {recipient['last_name']}".strip(),
-                                course_name=course_name,
-                                score="Pass",
-                                completion_date=datetime.now().strftime("%B %d, %Y")
-                            )
-                            
-                            filename = f"{recipient['first_name']}_{recipient['last_name']}_certificate.pdf"
-                            generated_files.append({
-                                'name': filename,
-                                'content': pdf_bytes
-                            })
-                            
-                        except Exception as e:
-                            st.error(f"Error generating certificate for {recipient['first_name']} {recipient['last_name']}: {str(e)}")
-                    
-                    # Skip the zip_path and results conversion
-                    st.session_state.admin_generated_files = generated_files
-                    
-                else:
-                    # Use PDF template batch generation
-                    results, zip_path = pdf_generator.generate_batch(
-                        recipients=recipients,
-                        progress_callback=update_progress,
-                        parallel=True
-                    )
+                for i, recipient in enumerate(recipients):
+                    try:
+                        progress = (i + 1) / total
+                        progress_bar.progress(progress)
+                        status_text.text(f"Generating certificate {i + 1} of {total} for {recipient['first_name']} {recipient['last_name']}")
+                        
+                        # Get course info
+                        course_info = st.session_state.get('admin_selected_course_info', {})
+                        course_name = course_info.get('name', 'Vapes and Vaping')
+                        
+                        # Generate certificate using programmatic generation
+                        pdf_bytes = generate_certificate_for_app(
+                            student_name=f"{recipient['first_name']} {recipient['last_name']}".strip(),
+                            course_name=course_name,
+                            score="Pass",
+                            completion_date=datetime.now().strftime("%B %d, %Y")
+                        )
+                        
+                        filename = f"{recipient['first_name']}_{recipient['last_name']}_certificate.pdf"
+                        generated_files.append({
+                            'name': filename,
+                            'content': pdf_bytes
+                        })
+                        
+                    except Exception as e:
+                        st.error(f"Error generating certificate for {recipient['first_name']} {recipient['last_name']}: {str(e)}")
                 
-                # Convert results to the format expected by admin workflow (only for PDF templates)
-                if not use_programmatic:
-                    generated_files = []
-                    for i, result in enumerate(results):
-                        if result.success:
-                            # Read the generated file
-                            output_dir = os.path.dirname(zip_path)
-                            file_path = os.path.join(output_dir, result.filename)
-                            
-                            if os.path.exists(file_path):
-                                with open(file_path, 'rb') as f:
-                                    generated_files.append({
-                                        'name': result.filename,
-                                        'content': f.read()
-                                    })
-                    
-                    st.session_state.admin_generated_files = generated_files
+                st.session_state.admin_generated_files = generated_files
                 
                 # Log certificate generation
                 storage.log_certificate_generation(
@@ -2412,78 +2525,45 @@ def main():
     else:
         user = get_current_user()
         
-        # Initialize version manager
-        version_manager = VersionManager()
-        
-        # Add version selector in sidebar
-        with st.sidebar:
-            st.markdown("### 🎨 UI Version")
-            selected_version = st.selectbox(
-                "Choose UI Experience:",
-                options=["Version 3: Modern Dashboard", "Version 1: Streamlined Efficiency", "Version 2: User-Friendly Guidance", "Legacy UI"],
-                index=0,
-                help="Try different UI versions to find your preferred experience"
-            )
-            
-            if selected_version != "Legacy UI":
-                version_info = version_manager.get_version_info(selected_version.split(":")[0].strip())
-                if version_info:
-                    st.info(f"**{version_info['name']}**\n\n{version_info['description']}")
+        # Version selector removed - only use working version
         
         if user and user.get("role") == "admin":
             # Admin user - show admin navigation
-            if selected_version == "Legacy UI":
-                dashboard_page = st.Page(render_dashboard, title="Dashboard", icon="📊", default=True)
-            elif selected_version.startswith("Version 1"):
-                from pages.dashboard_v1_efficiency import render_dashboard_v1
-                dashboard_page = st.Page(render_dashboard_v1, title="Dashboard V1", icon="⚡", default=True)
-            elif selected_version.startswith("Version 2"):
-                from pages.dashboard_v2_guided import render_dashboard_v2
-                dashboard_page = st.Page(render_dashboard_v2, title="Dashboard V2", icon="🎓", default=True)
-            elif selected_version.startswith("Version 3"):
-                from pages.dashboard_v3_modern import render_dashboard_v3
-                dashboard_page = st.Page(render_dashboard_v3, title="Dashboard V3", icon="🎨", default=True)
+            # Always use the working dashboard - other versions were removed
+            dashboard_page = st.Page(render_dashboard, title="Dashboard", icon="📊", default=True)
             
-            generate_page = st.Page(render_admin_certificate_generation, title="Generate Certificates", icon="🏆")
+            # Import certificate generation with help system
+            from pages.certificate_generation_with_help import render_certificate_generation
+            cert_gen_with_help = st.Page(render_certificate_generation, title="🏆 Certificate Generator", icon="🏆")
+            
+            # Import Express Mode
+            from pages.express_mode import render_express_mode
+            express_page = st.Page(render_express_mode, title="⚡ Express Mode", icon="⚡")
+            
+            generate_page = st.Page(render_admin_certificate_generation, title="Legacy Generate", icon="📋")
             templates_page = st.Page(render_templates_page, title="Templates", icon="📄")
             courses_page = st.Page(render_courses_page, title="Courses", icon="📚")
             users_page = st.Page(render_users_page, title="Users", icon="👥")
             analytics_page = st.Page(render_analytics_page, title="Analytics", icon="📈")
             settings_page = st.Page(render_settings_page, title="Settings", icon="⚙️")
             
-            # Add flexible workflow engine demo
-            from pages.workflow_engine_demo import render_workflow_engine_demo
-            workflow_demo_page = st.Page(render_workflow_engine_demo, title="Workflow Engine Demo", icon="🚀")
+            # Workflow engine demo removed
             
             logout_page = st.Page(logout_action, title="Logout", icon="🚪")
             
             pg = st.navigation({
-                "Admin": [dashboard_page, generate_page, templates_page, courses_page, users_page],
-                "Advanced": [workflow_demo_page],
+                "Certificate Generation": [cert_gen_with_help, express_page, generate_page],
+                "Admin": [dashboard_page, templates_page, courses_page, users_page],
                 "System": [analytics_page, settings_page, logout_page]
             })
         else:
-            # Regular user - show user workflow
-            if selected_version == "Legacy UI":
-                generate_page = st.Page(user_workflow, title="Generate Certificates", icon="🏆", default=True)
-            elif selected_version.startswith("Version 1"):
-                from pages.user_workflow_v1_express import render_user_workflow_v1
-                generate_page = st.Page(render_user_workflow_v1, title="Express Workflow", icon="⚡", default=True)
-            elif selected_version.startswith("Version 2"):
-                from pages.user_workflow_v2_wizard import render_user_workflow_v2
-                generate_page = st.Page(render_user_workflow_v2, title="Guided Workflow", icon="🎓", default=True)
-            elif selected_version.startswith("Version 3"):
-                from pages.user_workflow_v3_visual import render_user_workflow_v3
-                generate_page = st.Page(render_user_workflow_v3, title="Visual Workflow", icon="🎨", default=True)
-            
-            # Add flexible workflow engine for all users
-            from pages.workflow_engine_demo import render_workflow_engine_demo
-            workflow_demo_page = st.Page(render_workflow_engine_demo, title="Flexible Workflow", icon="🚀")
+            # Regular user - ONE SIMPLE workflow only
+            generate_page = st.Page(user_workflow, title="🏆 Generate Certificates", icon="🏆", default=True)
                 
             logout_page = st.Page(logout_action, title="Logout", icon="🚪")
             
             pg = st.navigation({
-                "Certificate Generator": [generate_page, workflow_demo_page],
+                "Certificate Generator": [generate_page],
                 "Account": [logout_page]
             })
     
